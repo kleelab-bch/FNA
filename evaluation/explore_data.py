@@ -9,10 +9,11 @@ import os
 
 
 def get_images_by_subject(image_names):
+    # find unique subject id from list of image names
     unique_subjects = set()
     images_by_subject = {}
     for image_name in image_names:
-        unique_subjects.add(image_name[:6])
+        unique_subjects.add(image_name[:6])  # duplicate name will be ignored in the set
         if image_name[:6] not in images_by_subject:
             images_by_subject[image_name[:6]] = []
         images_by_subject[image_name[:6]].append(image_name)

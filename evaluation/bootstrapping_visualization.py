@@ -107,8 +107,10 @@ def plot_scatter(box_counts_df, ground_truth_min_follicular, save_base_path):
     plt.xlabel('Ground Truth Number of Follicular Clusters', fontsize='large')
     plt.ylabel('Predicted Number of Follicular Clusters', fontsize='large')
 
-    plt.xlim(left=0, right=120)
-    plt.ylim(bottom=0, top=120)
+    # plt.xlim(left=0, right=120)
+    # plt.ylim(bottom=0, top=120)
+    plt.xlim(left=0, right=1000)
+    plt.ylim(bottom=0, top=1000)
     plt.grid(True)
     plt.savefig(save_base_path + 'data_scatter.png')
     plt.close()
@@ -204,6 +206,10 @@ def plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_lis
 
 
 def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list, save_base_path):
+    assert len(predicted_min_follicular_list) == len(precision_list)
+    assert len(predicted_min_follicular_list) == len(recall_list)
+    assert len(predicted_min_follicular_list) == len(f1_list)
+
     plt.plot(predicted_min_follicular_list, precision_list, marker='.', label='Precision', lw=2)
     plt.plot(predicted_min_follicular_list, recall_list, marker='.', label='Recall', lw=2)
     plt.plot(predicted_min_follicular_list, f1_list, marker='.', label='F1', lw=2)
@@ -213,7 +219,7 @@ def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list
     plt.ylabel('Performance', fontsize='large')
 
     # plt.ylim(bottom=0.8, top=1)
-    plt.xlim(left=0, right=30)
+    plt.xlim(left=0, right=len(predicted_min_follicular_list))
     plt.legend()
     plt.grid()
     plt.savefig(save_base_path + 'performance_at_thresholds.png')

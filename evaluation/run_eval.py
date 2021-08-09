@@ -14,31 +14,32 @@ import bootstrapping_visualization as bootstrap_viz
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
 
 
-def run_bootstrap(object_detection_type, img_root_path):
+def run_bootstrap(model_type, load_path, img_root_path):
     bootstrap_repetition_num = 10000
-    ground_truth_min_follicular = 15
-    predicted_min_follicular = 15
+    ground_truth_min_follicular = 125  # 15
 
     test_image_names = get_files_in_folder(img_root_path)
-    np_ground_truth_boxes = np.load("generated/ground_truth_boxes.npy", allow_pickle=True)
-    np_faster_rcnn_boxes = np.load("generated/{}_boxes.npy".format(object_detection_type), allow_pickle=True)
+    test_image_names.sort()
 
-    print('ground truth: ', count_boxes(test_image_names, np_ground_truth_boxes))
-    print('predictions: ', count_boxes(test_image_names, np_faster_rcnn_boxes))
+    np_predicted_detection_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
+    np_ground_truth_boxes = np.load(f"{load_path}/ground_truth_boxes.npy", allow_pickle=True)
+    # np_predicted_detection_boxes = np.load("generated/{}_boxes.npy".format(model_type), allow_pickle=True)
+    # np_ground_truth_boxes = np.load("generated/ground_truth_boxes.npy", allow_pickle=True)
 
     # Data Organizing
     test_images_by_subject = get_images_by_subject(test_image_names)
     print_images_by_subject_statistics(test_images_by_subject)
 
     # Follicular Cluster Counting after bootstrapping
-    box_counts = bootstrap.bootstrap_box_counts(test_image_names, test_images_by_subject, np_ground_truth_boxes,
-                                      np_faster_rcnn_boxes, bootstrap_repetition_num)
-    box_counts_df = pd.DataFrame(box_counts)
+    box_counts_df = bootstrap.bootstrap_box_counts(test_image_names, test_images_by_subject, np_ground_truth_boxes,
+                                      np_predicted_detection_boxes, bootstrap_repetition_num)
+
     # box_counts_df.to_excel('generated/bootstrapped_box_counts.xlsx', index=False)
-    print('boxes shape: ', box_counts.shape)
+    print('boxes shape: ', box_counts_df.shape)
+    print()
 
     # ----------- Analysis Starts -------------------
-    save_base_path = 'generated/bootstrapped_{}/'.format(object_detection_type)
+    save_base_path = f'{load_path}/bootstrapped_{model_type}/'
     if os.path.isdir(save_base_path) is False:
         os.mkdir(save_base_path)
 
@@ -57,7 +58,7 @@ def run_bootstrap(object_detection_type, img_root_path):
     recall_list = []
     f1_list = []
     predicted_min_follicular_list = []
-    for predicted_min_follicular in range(0, 31):
+    for predicted_min_follicular in range(0, ground_truth_min_follicular * 2):
         a_precision, a_recall, a_f1 = bootstrap.stats_at_threshold(box_counts_df, ground_truth_min_follicular,
                                                          predicted_min_follicular, DEBUG=True)
         predicted_min_follicular_list.append(predicted_min_follicular)
@@ -80,7 +81,6 @@ def run_visualize_box_images(load_path, model_type, predict_box_type, img_root_p
 
     # -------------------- Boxed Images Visualization -----------------------------
     predicted_detection_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
-    # vunet_boxes = np.load("generated/vunet_boxes.npy", allow_pickle=True)
     ground_truth_boxes = np.load(f"{load_path}/ground_truth_boxes.npy", allow_pickle=True)
 
     save_base_path = f"{load_path}/{model_type}_boxes/"
@@ -91,14 +91,14 @@ def run_visualize_box_images(load_path, model_type, predict_box_type, img_root_p
     visualizer_obj = Visualizer()
     visualizer_obj.overlay_boxes(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
                                     predicted_detection_boxes, predict_box_type=predict_box_type)
-    # bounding_box_per_image_distribution(save_base_path, ground_truth_mask_names, ground_truth_boxes, faster_rcnn_boxes, predict_box_type=object_detection_type)
+    # bounding_box_per_image_distribution(save_base_path, ground_truth_mask_names, ground_truth_boxes, faster_rcnn_boxes, predict_box_type=model_type)
 
 
-def run_cam(object_detection_type, img_root_path):
-    predicted_feature_maps = np.load(f"generated/{object_detection_type}_features.npy", allow_pickle=True)
+def run_cam(model_type, img_root_path):
+    predicted_feature_maps = np.load(f"generated/{model_type}_features.npy", allow_pickle=True)
     # feature_name = 'rpn_features_to_crop'  # 40x40x1088
     feature_name= 'rpn_box_predictor_features'  # 40x40x512
-    save_heatmap_path = f'generated/{object_detection_type}_boxes/{feature_name}/'
+    save_heatmap_path = f'generated/{model_type}_boxes/{feature_name}/'
     if os.path.isdir(save_heatmap_path) is False:
         os.mkdir(save_heatmap_path)
     for image_name in tqdm(predicted_feature_maps.item().keys()):
@@ -116,12 +116,12 @@ def run_eval_for_tf_objection_detection_API():
     # img_root_path = base_path + 'FNA/assets/all-patients/img/'
     img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/images_test/'
     # img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/combined_images_test/'
-    object_detection_type = 'faster_640_backup'  # 'faster_640_stained_improved'
+    model_type = 'faster_640_backup'  # 'faster_640_stained_improved'
     load_path = 'generated'
 
-    # run_bootstrap(object_detection_type, img_root_path)
-    run_visualize_box_images(load_path, object_detection_type, 'faster_rcnn', img_root_path, ground_truth_mask_root_path)
-    # run_cam(object_detection_type, img_root_path)
+    # run_bootstrap(model_type, load_path, img_root_path)
+    run_visualize_box_images(load_path, model_type, 'faster_rcnn', img_root_path, ground_truth_mask_root_path)
+    # run_cam(model_type, img_root_path)
 
 
 def run_eval_for_MTL_classifier():
@@ -138,7 +138,9 @@ def run_eval_for_MTL_classifier():
     load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256_patience_10/FNA_test/frame2_training_repeat0/'
 
     model_type = 'pred'
-    run_visualize_box_images(load_path, model_type, 'MTL_auto_reg_aut', img_root_path, ground_truth_mask_root_path)
+
+    run_bootstrap(model_type, load_path, img_root_path)
+    # run_visualize_box_images(load_path, model_type, 'MTL_auto_reg_aut', img_root_path, ground_truth_mask_root_path)
 
 
 if __name__ == "__main__":
