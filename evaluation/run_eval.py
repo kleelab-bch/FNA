@@ -70,32 +70,33 @@ def run_bootstrap(object_detection_type, img_root_path):
                                    save_base_path)
 
 
-def run_visualize_box_images(object_detection_type, img_root_path, ground_truth_mask_root_path):
+def run_visualize_box_images(load_path, model_type, predict_box_type, img_root_path, ground_truth_mask_root_path):
 
     ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
-
+    ground_truth_mask_names.sort()
     # -------------------- Mask to Box Conversion ----------------------------
     # mask_to_box('generated/', ground_truth_mask_root_path, ground_truth_mask_names, 'ground_truth_3cat')
     # mask_to_box('generated/', vUnet_mask_root_path, ground_truth_mask_names, 'vunet')
 
     # -------------------- Boxed Images Visualization -----------------------------
-    predicted_detection_boxes = np.load(f"generated/{object_detection_type}_boxes.npy", allow_pickle=True)
+    predicted_detection_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
     # vunet_boxes = np.load("generated/vunet_boxes.npy", allow_pickle=True)
-    ground_truth_boxes = np.load("generated/ground_truth_boxes.npy", allow_pickle=True)
+    ground_truth_boxes = np.load(f"{load_path}/ground_truth_boxes.npy", allow_pickle=True)
 
-    save_base_path = 'generated/{}_boxes/'.format(object_detection_type)
+    save_base_path = f"{load_path}/{model_type}_boxes/"
     if os.path.isdir(save_base_path) is False:
         os.mkdir(save_base_path)
+    print('save_base_path', save_base_path)
 
     visualizer_obj = Visualizer()
     visualizer_obj.overlay_boxes(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
-                                       predicted_detection_boxes, predict_box_type='faster_rcnn')
+                                    predicted_detection_boxes, predict_box_type=predict_box_type)
     # bounding_box_per_image_distribution(save_base_path, ground_truth_mask_names, ground_truth_boxes, faster_rcnn_boxes, predict_box_type=object_detection_type)
 
 
 def run_cam(object_detection_type, img_root_path):
     predicted_feature_maps = np.load(f"generated/{object_detection_type}_features.npy", allow_pickle=True)
-    # feature_name = 'rpn_features_to_crop' # 40x40x1088
+    # feature_name = 'rpn_features_to_crop'  # 40x40x1088
     feature_name= 'rpn_box_predictor_features'  # 40x40x512
     save_heatmap_path = f'generated/{object_detection_type}_boxes/{feature_name}/'
     if os.path.isdir(save_heatmap_path) is False:
@@ -105,7 +106,7 @@ def run_cam(object_detection_type, img_root_path):
         visualizer_obj.visualize_feature_activation_map(feature_map, img_root_path, image_name, save_heatmap_path)
 
 
-if __name__ == "__main__":
+def run_eval_for_tf_objection_detection_API():
     # Data Path and boxes
     base_path = '/media/bch_drive/Public/JunbongJang/'
 
@@ -116,7 +117,30 @@ if __name__ == "__main__":
     img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/images_test/'
     # img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/combined_images_test/'
     object_detection_type = 'faster_640_backup'  # 'faster_640_stained_improved'
+    load_path = 'generated'
 
     # run_bootstrap(object_detection_type, img_root_path)
-    run_visualize_box_images(object_detection_type, img_root_path, ground_truth_mask_root_path)
+    run_visualize_box_images(load_path, object_detection_type, 'faster_rcnn', img_root_path, ground_truth_mask_root_path)
     # run_cam(object_detection_type, img_root_path)
+
+
+def run_eval_for_MTL_classifier():
+    # created 7/26/2021
+    # Data Path and boxes
+    base_path = '/media/bch_drive/Public/JunbongJang/Segmentation/'
+
+    # ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_valid_fold0/mask_processed/'
+    # img_root_path = base_path + 'assets/FNA/FNA_valid_fold0/img/'
+    # load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256/FNA_valid_fold0/frame2_A_repeat0/'
+
+    ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
+    img_root_path = base_path + 'assets/FNA/FNA_test/img/'
+    load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256_patience_10/FNA_test/frame2_training_repeat0/'
+
+    model_type = 'pred'
+    run_visualize_box_images(load_path, model_type, 'MTL_auto_reg_aut', img_root_path, ground_truth_mask_root_path)
+
+
+if __name__ == "__main__":
+    # run_eval_for_tf_objection_detection_API()
+    run_eval_for_MTL_classifier()

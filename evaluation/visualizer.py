@@ -33,7 +33,6 @@ class Visualizer:
     def __init__(self):
         print('Visualizer')
 
-
     def get_bounding_box_from_mask(self, mask, pixel_val):
         xmins = np.array([])
         ymins = np.array([])
@@ -194,57 +193,56 @@ class Visualizer:
         np.save(save_base_path + '{}_boxes.npy'.format(box_type), saved_boxes)
 
 
-    def overlay_boxes_ensemble(self, save_base_path, img_root_path, mask_names, ground_truth_boxes, unstained_detection_boxes, stained_detection_boxes, predict_box_type):
-        '''
-            get bounding box from vUNet and Faster Rcnn models, and ground truth mask.
-            overlay them all on top of the unstained raw image
-        '''
-
-        total_false_negative = 0
-        total_false_positive = 0
-        total_gt_overlaps = 0
-
-        for idx, filename in enumerate(mask_names):
-
-            img_path = os.path.join(img_root_path, filename.replace('predict', ''))
-            img = Image.open(img_path)  # load images from paths
-
-            one_ground_truth_boxes = ground_truth_boxes.item()[filename]
-            one_unstained_predicted_boxes = unstained_detection_boxes.item()[filename]
-            one_stained_predicted_boxes = stained_detection_boxes.item()[filename]
-
-            if predict_box_type == 'faster_rcnn':
-                one_unstained_predicted_boxes[:, 0], one_unstained_predicted_boxes[:, 2] = one_unstained_predicted_boxes[:,0] * img.height, one_unstained_predicted_boxes[:, 2] * img.height  # 1944
-                one_unstained_predicted_boxes[:, 1], one_unstained_predicted_boxes[:, 3] = one_unstained_predicted_boxes[:,1] * img.width, one_unstained_predicted_boxes[:, 3] * img.width  # 2592
-                one_stained_predicted_boxes[:, 0], one_stained_predicted_boxes[:, 2] = one_stained_predicted_boxes[:,0] * img.height, one_stained_predicted_boxes[:, 2] * img.height  # 1944
-                one_stained_predicted_boxes[:, 1], one_stained_predicted_boxes[:, 3] = one_stained_predicted_boxes[:,1] * img.width, one_stained_predicted_boxes[:, 3] * img.width  # 2592
-
-            one_predicted_boxes = np.concatenate((one_unstained_predicted_boxes, one_stained_predicted_boxes), axis=0)
-            # Save image with bounding box
-            save_path = os.path.join(save_base_path, filename.replace('predict', ''))
-            print(save_path)
-
-            if one_ground_truth_boxes.shape[0] > 0 or one_predicted_boxes.shape[0] > 0:
-                combined_boxed_image = self.draw_bounding_boxes_on_image(img, one_ground_truth_boxes, color='#9901ff')
-                combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_predicted_boxes,
-                                                                    color='#89ff29')
-                combined_boxed_image.save(save_path)
-
-                gt_overlaps, false_negative, false_positive = count_overlap_box(one_ground_truth_boxes, one_predicted_boxes)
-                print(gt_overlaps, false_negative, false_positive)
-                total_gt_overlaps = total_gt_overlaps + gt_overlaps
-                total_false_negative = total_false_negative + false_negative
-                total_false_positive = total_false_positive + false_positive
-            else:
-                print()
-
-        print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
-        precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
-        recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
-        f1 = 2*precision*recall/(precision+recall)
-        print('precision:', precision)
-        print('recall:', recall)
-        print('f1:', f1)
+    # def overlay_boxes_ensemble(self, save_base_path, img_root_path, mask_names, ground_truth_boxes, unstained_detection_boxes, stained_detection_boxes, predict_box_type):
+    #     '''
+    #         get bounding box from vUNet and Faster Rcnn models, and ground truth mask.
+    #         overlay them all on top of the unstained raw image
+    #     '''
+    #
+    #     total_false_negative = 0
+    #     total_false_positive = 0
+    #     total_gt_overlaps = 0
+    #
+    #     for idx, filename in enumerate(mask_names):
+    #
+    #         img_path = os.path.join(img_root_path, filename.replace('predict', ''))
+    #         img = Image.open(img_path)  # load images from paths
+    #
+    #         one_ground_truth_boxes = ground_truth_boxes.item()[filename]
+    #         one_unstained_predicted_boxes = unstained_detection_boxes.item()[filename]
+    #         one_stained_predicted_boxes = stained_detection_boxes.item()[filename]
+    #
+    #         if predict_box_type == 'faster_rcnn':
+    #             one_unstained_predicted_boxes[:, 0], one_unstained_predicted_boxes[:, 2] = one_unstained_predicted_boxes[:,0] * img.height, one_unstained_predicted_boxes[:, 2] * img.height  # 1944
+    #             one_unstained_predicted_boxes[:, 1], one_unstained_predicted_boxes[:, 3] = one_unstained_predicted_boxes[:,1] * img.width, one_unstained_predicted_boxes[:, 3] * img.width  # 2592
+    #             one_stained_predicted_boxes[:, 0], one_stained_predicted_boxes[:, 2] = one_stained_predicted_boxes[:,0] * img.height, one_stained_predicted_boxes[:, 2] * img.height  # 1944
+    #             one_stained_predicted_boxes[:, 1], one_stained_predicted_boxes[:, 3] = one_stained_predicted_boxes[:,1] * img.width, one_stained_predicted_boxes[:, 3] * img.width  # 2592
+    #
+    #         one_predicted_boxes = np.concatenate((one_unstained_predicted_boxes, one_stained_predicted_boxes), axis=0)
+    #         # Save image with bounding box
+    #         save_path = os.path.join(save_base_path, filename.replace('predict', ''))
+    #         print(save_path)
+    #
+    #         if one_ground_truth_boxes.shape[0] > 0 or one_predicted_boxes.shape[0] > 0:
+    #             combined_boxed_image = self.draw_bounding_boxes_on_image(img, one_ground_truth_boxes, color=(153,1,255,128))
+    #             combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_predicted_boxes, color=(137, 255, 41, 128))
+    #             combined_boxed_image.save(save_path)
+    #
+    #             gt_overlaps, false_negative, false_positive = count_overlap_box(one_ground_truth_boxes, one_predicted_boxes)
+    #             print(gt_overlaps, false_negative, false_positive)
+    #             total_gt_overlaps = total_gt_overlaps + gt_overlaps
+    #             total_false_negative = total_false_negative + false_negative
+    #             total_false_positive = total_false_positive + false_positive
+    #         else:
+    #             print()
+    #
+    #     print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
+    #     precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
+    #     recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
+    #     f1 = 2*precision*recall/(precision+recall)
+    #     print('precision:', precision)
+    #     print('recall:', recall)
+    #     print('f1:', f1)
 
 
     def overlay_boxes(self, save_base_path, img_root_path, mask_names, ground_truth_boxes, prediction_boxes, predict_box_type):
@@ -261,17 +259,23 @@ class Visualizer:
             img_path = os.path.join(img_root_path, filename)
             img = Image.open(img_path)  # load images from paths
 
-            orig_filename = filename.replace('predict', '').replace('stained_','')
-            one_ground_truth_boxes = ground_truth_boxes.item()[orig_filename]
-            one_predicted_boxes = prediction_boxes.item()[filename]
-
             if predict_box_type == 'faster_rcnn':
+                orig_filename = filename.replace('predict', '').replace('stained_', '')
+                one_ground_truth_boxes = ground_truth_boxes.item()[orig_filename]
+                one_predicted_boxes = prediction_boxes.item()[filename]
+
                 one_predicted_boxes[:, 0], one_predicted_boxes[:, 2] = one_predicted_boxes[:,0] * img.height, one_predicted_boxes[:, 2] * img.height  # 1944
                 one_predicted_boxes[:, 1], one_predicted_boxes[:, 3] = one_predicted_boxes[:,1] * img.width, one_predicted_boxes[:, 3] * img.width  # 2592
 
+            else:
+                # 7/27/2021 for FNA MTL classifier
+                one_ground_truth_boxes = ground_truth_boxes.item()[idx]
+                one_predicted_boxes = prediction_boxes.item()[idx]
+                print(idx, filename)
+                print(one_ground_truth_boxes.shape, one_predicted_boxes.shape)
+
             # Save image with bounding box
             save_path = os.path.join(save_base_path, filename.replace('predict', ''))
-            print(save_path)
 
             if one_ground_truth_boxes.shape[0] > 0 or one_predicted_boxes.shape[0] > 0:
                 # Draw only ground truth boxes for patent figures
@@ -283,13 +287,19 @@ class Visualizer:
                 # combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, two_ground_truth_boxes, color='red', thickness=16)
                 # combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, three_ground_truth_boxes, color='green', thickness=16)
 
-                combined_boxed_image = self.draw_bounding_boxes_on_image(img, one_ground_truth_boxes, color='#9901ff')
-                combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_predicted_boxes,
-                                                                    color='#89ff29')
+                combined_boxed_image = self.draw_bounding_boxes_on_image(img, one_ground_truth_boxes, color=(153,1,255))
+                combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_predicted_boxes, color=(137, 255, 41))
+
+                gt_overlaps, false_negative, false_positive, gt_overlap_pairs = count_overlap_box(one_ground_truth_boxes, one_predicted_boxes)
+                print(gt_overlaps, false_negative, false_positive)
+
+                # since PIL draw do not blend lines, I manually draw the overlapped boxes with different color
+                overlapped_ground_truth_box_indices = [gt_overlap_pair[0] for gt_overlap_pair in gt_overlap_pairs]
+                combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_ground_truth_boxes[overlapped_ground_truth_box_indices],
+                                                                         color=(255, 255, 255))
+
                 combined_boxed_image.save(save_path)
 
-                gt_overlaps, false_negative, false_positive = count_overlap_box(one_ground_truth_boxes, one_predicted_boxes)
-                print(gt_overlaps, false_negative, false_positive)
                 total_gt_overlaps = total_gt_overlaps + gt_overlaps
                 total_false_negative = total_false_negative + false_negative
                 total_false_positive = total_false_positive + false_positive
@@ -303,6 +313,7 @@ class Visualizer:
         print('precision:', precision)
         print('recall:', recall)
         print('f1:', f1)
+
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, predict_box_type):

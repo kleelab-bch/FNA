@@ -28,33 +28,39 @@ def calculate_box_area(box):
 def count_overlap_box(ground_truth_boxes, predicted_boxes):
     total_gt_boxes = ground_truth_boxes.shape[0]
     gt_overlaps = 0
-
+    gt_overlap_pair = []
     # For every ground truth box against all prediction boxes
-    for ground_truth_box in ground_truth_boxes:
-        for predicted_box in predicted_boxes:
+    for i, ground_truth_box in enumerate(ground_truth_boxes):
+        for j, predicted_box in enumerate(predicted_boxes):
             overlapped_area = calculate_box_overlap_area(ground_truth_box, predicted_box)
             # If overlapped area is greater than 50% of ground truth or prediction box
             if overlapped_area > calculate_box_area(ground_truth_box) * 0.5 or overlapped_area > calculate_box_area(predicted_box) * 0.5:
                 # For one prediction, count all ground truth inside it
                 # For one ground truth, count only once for prediction boxes inside it
                 gt_overlaps = gt_overlaps + 1
+                gt_overlap_pair.append((i,j))
                 break
 
+    not_fp_pair = []
     # to count false_positive
     false_positive = 0
-    for predicted_box in predicted_boxes:
+    for i, predicted_box in enumerate(predicted_boxes):
         false_positive_flag = True
-        for ground_truth_box in ground_truth_boxes:
+        for j, ground_truth_box in enumerate(ground_truth_boxes):
             overlapped_area = calculate_box_overlap_area(ground_truth_box, predicted_box)
             if overlapped_area > calculate_box_area(ground_truth_box) * 0.5 or overlapped_area > calculate_box_area(predicted_box) * 0.5:
                 false_positive_flag = False
+                not_fp_pair.append((i,j))
                 break
         if false_positive_flag:
             false_positive = false_positive + 1
 
+    # print(gt_overlap_pair)
+    # print(not_fp_pair)
+    # print('------------------')
 
     # print('total_gt_boxes', total_gt_boxes)
     # print('overlaps', gt_overlaps)
     false_negative = total_gt_boxes - gt_overlaps
 
-    return gt_overlaps, false_negative, false_positive
+    return gt_overlaps, false_negative, false_positive, gt_overlap_pair
