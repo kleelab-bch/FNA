@@ -6,6 +6,20 @@ Count overlaps between ground truth and prediction boxes
 '''
 
 
+def calculate_polygon_area(ordered_coordinates):
+    x_y = ordered_coordinates.reshape(-1, 2)
+
+    x = x_y[:, 0]
+    y = x_y[:, 1]
+
+    # shoelace formula
+    S1 = np.dot(x, np.roll(y, -1))
+    S2 = np.dot(y, np.roll(x, -1))
+    area = .5 * np.absolute(S1 - S2)
+
+    return area
+
+
 def calculate_box_overlap_area(box1, box2):
     # https://stackoverflow.com/questions/27152904/calculate-overlapped-area-between-two-rectangles
     ymin1, xmin1, ymax1, xmax1 = box1[0], box1[1], box1[2], box1[3]
@@ -23,6 +37,30 @@ def calculate_box_overlap_area(box1, box2):
 def calculate_box_area(box):
     ymin, xmin, ymax, xmax = box[0], box[1], box[2], box[3]
     return (xmax-xmin) * (ymax-ymin)
+
+
+from shapely.ops import cascaded_union
+import geopandas as gpd
+from shapely.geometry import Polygon
+def connect_overlapped_boxes(boxes):
+    # connect boxes to form a big polygon
+    def convert_box_coordinate_to_polygon(box):
+        # from box coordinates ymin, xmin, ymax, xmax to (x1,y1), (x2,y2), (x3,y3), (x4,y4)
+        ymin, xmin, ymax, xmax = box
+        x1, y1 = xmin, ymin
+        x2, y3 = xmax, ymin
+        x3, y3 = xmax, ymax
+        x4, y4 = xmin, ymax
+        return Polygon([(x1, y1), (x2, y3), (x3, y3), (x4, y4)])
+
+    polygons = []
+    for box in boxes:
+        polygon = convert_box_coordinate_to_polygon(box)
+        polygons.append(polygon)
+
+    boundary = gpd.GeoSeries(cascaded_union(polygons))
+
+    return boundary
 
 
 def count_overlap_box(ground_truth_boxes, predicted_boxes):

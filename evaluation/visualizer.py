@@ -26,7 +26,7 @@ import tensorflow as tf
 
 from matplotlib import pyplot as plt
 from scipy import ndimage
-from count_overlap_box import *
+from calc_polygon import *
 
 
 class Visualizer:
@@ -125,6 +125,19 @@ class Visualizer:
         (left, right, top, bottom) = (xmin, xmax, ymin, ymax)
         draw.line([(left, top), (left, bottom), (right, bottom),
                     (right, top), (left, top)], width=thickness, fill=color)
+
+
+    def draw_bounding_regions_on_image(self, image, coordinates, color, thickness=4):
+        coordinates_shape = coordinates.shape
+        if not coordinates_shape:
+            return
+        if len(boxes_shape) != 2 or boxes_shape[1] < 4:
+            raise ValueError('Input must be of size [N, 4>=]')
+        for i in range(boxes_shape[0]):
+            draw = ImageDraw.Draw(image)
+            draw.line(coordinates, width=thickness, fill=color)
+
+        return image
 
 
     def vUNet_boxes(self, mask, a_threshold):
@@ -287,8 +300,8 @@ class Visualizer:
                 # combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, two_ground_truth_boxes, color='red', thickness=16)
                 # combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, three_ground_truth_boxes, color='green', thickness=16)
 
-                combined_boxed_image = self.draw_bounding_boxes_on_image(img, one_ground_truth_boxes, color=(153,1,255))
-                combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_predicted_boxes, color=(137, 255, 41))
+                combined_boxed_image = self.draw_bounding_boxes_on_image(img, one_ground_truth_boxes, color=(255,1,153))
+                combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_predicted_boxes, color=(50, 50, 50))
 
                 gt_overlaps, false_negative, false_positive, gt_overlap_pairs = count_overlap_box(one_ground_truth_boxes, one_predicted_boxes)
                 print(gt_overlaps, false_negative, false_positive)
@@ -296,7 +309,7 @@ class Visualizer:
                 # since PIL draw do not blend lines, I manually draw the overlapped boxes with different color
                 overlapped_ground_truth_box_indices = [gt_overlap_pair[0] for gt_overlap_pair in gt_overlap_pairs]
                 combined_boxed_image = self.draw_bounding_boxes_on_image(combined_boxed_image, one_ground_truth_boxes[overlapped_ground_truth_box_indices],
-                                                                         color=(255, 255, 255))
+                                                                         color=(137, 255, 41))
 
                 combined_boxed_image.save(save_path)
 
@@ -314,6 +327,29 @@ class Visualizer:
         print('recall:', recall)
         print('f1:', f1)
 
+
+    def overlay_polygons(self, save_base_path, img_root_path, mask_names, ground_truth_boxes, prediction_boxes, predict_box_type):
+        print('overlay_polygons')
+        for idx, filename in enumerate(mask_names):
+            img_path = os.path.join(img_root_path, filename)
+            img = Image.open(img_path)  # load images from paths
+
+            # for FNA MTL classifier, load boxes by image index
+            one_ground_truth_boxes = ground_truth_boxes.item()[idx]
+            one_predicted_boxes = prediction_boxes.item()[idx]
+            print(idx, filename)
+            print(one_ground_truth_boxes.shape, one_predicted_boxes.shape)
+
+            predict_polygon = connect_overlapped_boxes(one_predicted_boxes)
+            ground_truth_polygon = connect_overlapped_boxes(one_ground_truth_boxes)
+
+            print(predict_polygon)
+            print(ground_truth_polygon)
+
+            # calculate overlapped areas between two polygons
+            print(predict_polygon.intersection(ground_truth_polygon).area)
+            print(predict_polygon.union(ground_truth_polygon).area)
+            print('--------------------')
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, predict_box_type):

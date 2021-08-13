@@ -16,7 +16,7 @@ from explore_data import get_files_in_folder, get_images_by_subject, print_image
 
 def run_bootstrap(model_type, load_path, img_root_path):
     bootstrap_repetition_num = 10000
-    ground_truth_min_follicular = 125  # 15
+    ground_truth_min_follicular = 100  # 15
 
     test_image_names = get_files_in_folder(img_root_path)
     test_image_names.sort()
@@ -71,27 +71,41 @@ def run_bootstrap(model_type, load_path, img_root_path):
                                    save_base_path)
 
 
-def run_visualize_box_images(load_path, model_type, predict_box_type, img_root_path, ground_truth_mask_root_path):
+def convert_mask_to_box(ground_truth_mask_root_path):
+    ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
+    ground_truth_mask_names.sort()
+
+    visualizer_obj = Visualizer()
+    visualizer_obj.mask_to_box('generated/', ground_truth_mask_root_path, ground_truth_mask_names, 'ground_truth_3cat')
+
+
+def run_visualize_images(load_path, model_type, predict_box_type, img_root_path, ground_truth_mask_root_path):
 
     ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
     ground_truth_mask_names.sort()
-    # -------------------- Mask to Box Conversion ----------------------------
-    # mask_to_box('generated/', ground_truth_mask_root_path, ground_truth_mask_names, 'ground_truth_3cat')
-    # mask_to_box('generated/', vUnet_mask_root_path, ground_truth_mask_names, 'vunet')
 
-    # -------------------- Boxed Images Visualization -----------------------------
     predicted_detection_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
     ground_truth_boxes = np.load(f"{load_path}/ground_truth_boxes.npy", allow_pickle=True)
+    visualizer_obj = Visualizer()
 
-    save_base_path = f"{load_path}/{model_type}_boxes/"
+    # -------------------- Boxed Images Visualization -----------------------------
+    # save_base_path = f"{load_path}/{model_type}_boxes/"
+    # if os.path.isdir(save_base_path) is False:
+    #     os.mkdir(save_base_path)
+    # print('save_base_path', save_base_path)
+    #
+    # visualizer_obj.overlay_boxes(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
+    #                                 predicted_detection_boxes, predict_box_type=predict_box_type)
+    # bounding_box_per_image_distribution(save_base_path, ground_truth_mask_names, ground_truth_boxes, faster_rcnn_boxes, predict_box_type=model_type)
+
+    # -------------------- Polygon Visualization -----------------------------
+    save_base_path = f"{load_path}/{model_type}_polygogn/"
     if os.path.isdir(save_base_path) is False:
         os.mkdir(save_base_path)
     print('save_base_path', save_base_path)
 
-    visualizer_obj = Visualizer()
-    visualizer_obj.overlay_boxes(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
+    visualizer_obj.overlay_polygons(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
                                     predicted_detection_boxes, predict_box_type=predict_box_type)
-    # bounding_box_per_image_distribution(save_base_path, ground_truth_mask_names, ground_truth_boxes, faster_rcnn_boxes, predict_box_type=model_type)
 
 
 def run_cam(model_type, img_root_path):
@@ -120,7 +134,7 @@ def run_eval_for_tf_objection_detection_API():
     load_path = 'generated'
 
     # run_bootstrap(model_type, load_path, img_root_path)
-    run_visualize_box_images(load_path, model_type, 'faster_rcnn', img_root_path, ground_truth_mask_root_path)
+    run_visualize_images(load_path, model_type, 'faster_rcnn', img_root_path, ground_truth_mask_root_path)
     # run_cam(model_type, img_root_path)
 
 
@@ -139,8 +153,8 @@ def run_eval_for_MTL_classifier():
 
     model_type = 'pred'
 
-    run_bootstrap(model_type, load_path, img_root_path)
-    # run_visualize_box_images(load_path, model_type, 'MTL_auto_reg_aut', img_root_path, ground_truth_mask_root_path)
+    # run_bootstrap(model_type, load_path, img_root_path)
+    run_visualize_images(load_path, model_type, 'MTL_auto_reg_aut', img_root_path, ground_truth_mask_root_path)
 
 
 if __name__ == "__main__":
