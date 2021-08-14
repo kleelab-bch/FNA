@@ -1,4 +1,5 @@
 assets/* 
+generated/*
 models/results/history_* 
 **/.ipynb_checkpoints 
 **/*.avi 
