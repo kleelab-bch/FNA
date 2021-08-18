@@ -291,11 +291,11 @@ class Visualizer:
                 predict_polygon = connect_overlapped_boxes(one_predicted_boxes)
                 ground_truth_polygon = connect_overlapped_boxes(one_ground_truth_boxes)
                 # overlay polygon
-                overlaid_img = self.overlay_polygons(img, ground_truth_polygon, (255,0,0), False)
-                overlaid_img = self.overlay_polygons(overlaid_img, predict_polygon, (0,255,0), False)
+                overlaid_img = self.overlay_polygons(img, ground_truth_polygon, (255,0,0), True)
+                overlaid_img = self.overlay_polygons(overlaid_img, predict_polygon, (0,255,0), True)
 
                 overlapped_polygon = predict_polygon.intersection(ground_truth_polygon)
-                overlaid_img = self.overlay_polygons(overlaid_img, overlapped_polygon, (255,255,255), True)
+                overlaid_img = self.overlay_polygons(overlaid_img, overlapped_polygon, (255,255, 0), True)
                 save_filename = save_base_path + filename
                 overlaid_img.save(save_filename)
 
@@ -331,10 +331,9 @@ class Visualizer:
                 coords = [tuple(x) for x in coords]  # convert list of lists to list of tuples
 
                 draw = ImageDraw.Draw(overlaid_img)
+                draw.line(coords, fill=color, width=10)
                 if fill:
-                    draw.polygon(coords, fill=(*color, 60))
-                else:
-                    draw.line(coords, fill=color, width=8)
+                    draw.polygon(coords, fill=(*color, 30))
 
         # Alpha composite these two images together to obtain the desired result.
         overlaid_img = Image.alpha_composite(img.convert('RGBA'), overlaid_img)

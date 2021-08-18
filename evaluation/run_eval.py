@@ -161,11 +161,11 @@ def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, 
     # ground_truth_min_follicular = int(bootstrapped_box_counts_df[0].mean())  # 100  # 15
     # bootstrap_analysis(bootstrapped_box_counts_df, test_image_names, ground_truth_min_follicular, save_base_path)
 
-    bootstrapped_area_df = pd.read_csv(f'{save_base_path}bootstrapped_area_df.csv', header=None)
-    ground_truth_mean_area = int(bootstrapped_area_df[0].mean())
-    bootstrap_analysis(bootstrapped_area_df, test_image_names, ground_truth_mean_area, save_base_path)
+    # bootstrapped_area_df = pd.read_csv(f'{save_base_path}bootstrapped_area_df.csv', header=None)
+    # ground_truth_mean_area = int(bootstrapped_area_df[0].mean())
+    # bootstrap_analysis(bootstrapped_area_df, test_image_names, ground_truth_mean_area, save_base_path)
 
-    # run_visualize_images(load_path, model_type, img_root_path, ground_truth_mask_root_path)
+    run_visualize_images(load_path, model_type, img_root_path, ground_truth_mask_root_path)
     # run_cam(model_type, img_root_path)
 
 
