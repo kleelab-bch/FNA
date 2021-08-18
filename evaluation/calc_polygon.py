@@ -4,6 +4,7 @@ Creation Date: 10/28/2020
 
 Count overlaps between ground truth and prediction boxes
 '''
+import numpy as np
 
 
 def calculate_polygon_area(ordered_coordinates):
@@ -39,7 +40,7 @@ def calculate_box_area(box):
     return (xmax-xmin) * (ymax-ymin)
 
 
-from shapely.ops import cascaded_union
+from shapely.ops import unary_union
 import geopandas as gpd
 from shapely.geometry import Polygon
 def connect_overlapped_boxes(boxes):
@@ -48,19 +49,40 @@ def connect_overlapped_boxes(boxes):
         # from box coordinates ymin, xmin, ymax, xmax to (x1,y1), (x2,y2), (x3,y3), (x4,y4)
         ymin, xmin, ymax, xmax = box
         x1, y1 = xmin, ymin
-        x2, y3 = xmax, ymin
+        x2, y2 = xmax, ymin
         x3, y3 = xmax, ymax
         x4, y4 = xmin, ymax
-        return Polygon([(x1, y1), (x2, y3), (x3, y3), (x4, y4)])
+        return Polygon([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])
 
     polygons = []
     for box in boxes:
         polygon = convert_box_coordinate_to_polygon(box)
         polygons.append(polygon)
 
-    boundary = gpd.GeoSeries(cascaded_union(polygons))
+    polygons = gpd.GeoSeries(unary_union(polygons))[0]  # connect_overlapped_boxes
 
-    return boundary
+    # below is not necessary because shapely polygon already figures out which polygons are interiors with unary_union
+    # if polygons.boundary.geom_type == 'MultiLineString':
+    #     print(len(polygons.boundary))
+    #     new_polygons = find_interior_polygons_of_a_polygon(polygons)
+        # subtract operation between big polygon and small polygon within
+        # And operation above results
+
+    return polygons
+
+
+def find_interior_polygons_of_a_polygon(polygons):
+    # see whether one polygon contains another polygon
+    new_polygons = []
+    num_polygons = len(polygons)
+    for i, polygon in enumerate(polygons):
+        for j in range(num_polygons):
+            if i == j:
+                if polygon.contains(polygons[j]):
+                    polygon = polygon.difference(polygons[j])
+        new_polygons.append(polygon)
+
+    return new_polygons
 
 
 def count_overlap_box(ground_truth_boxes, predicted_boxes):

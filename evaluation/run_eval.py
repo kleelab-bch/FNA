@@ -12,44 +12,46 @@ from visualizer import Visualizer
 import bootstrapping as bootstrap
 import bootstrapping_visualization as bootstrap_viz
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
+import pandas as pd
+from PIL import Image
 
 
-def run_bootstrap(model_type, load_path, img_root_path):
-    bootstrap_repetition_num = 10000
-    ground_truth_min_follicular = 100  # 15
-
-    test_image_names = get_files_in_folder(img_root_path)
-    test_image_names.sort()
+def bootstrap_data(test_image_names, model_type, bootstrap_repetition_num, load_path, save_base_path, img_root_path):
 
     np_predicted_detection_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
     np_ground_truth_boxes = np.load(f"{load_path}/ground_truth_boxes.npy", allow_pickle=True)
-    # np_predicted_detection_boxes = np.load("generated/{}_boxes.npy".format(model_type), allow_pickle=True)
-    # np_ground_truth_boxes = np.load("generated/ground_truth_boxes.npy", allow_pickle=True)
 
-    # Data Organizing
+    print('Data Organization')
     test_images_by_subject = get_images_by_subject(test_image_names)
     print_images_by_subject_statistics(test_images_by_subject)
 
     # Follicular Cluster Counting after bootstrapping
-    box_counts_df = bootstrap.bootstrap_box_counts(test_image_names, test_images_by_subject, np_ground_truth_boxes,
-                                      np_predicted_detection_boxes, bootstrap_repetition_num)
+    img_path = os.path.join(img_root_path, test_image_names[0])
+    img = Image.open(img_path)  # load images from paths
+    img_size = {}
+    img_size['height'], img_size['width'] = img.size
+    bootstrapped_box_counts_df, bootstrapped_area_df = bootstrap.bootstrap_box_counts(test_image_names, test_images_by_subject, model_type, img_size,
+                                                        np_ground_truth_boxes, np_predicted_detection_boxes, bootstrap_repetition_num)
 
     # box_counts_df.to_excel('generated/bootstrapped_box_counts.xlsx', index=False)
-    print('boxes shape: ', box_counts_df.shape)
+    print('bootstrapped data shape: ', bootstrapped_box_counts_df.shape, bootstrapped_area_df.shape)
     print()
 
-    # ----------- Analysis Starts -------------------
-    save_base_path = f'{load_path}/bootstrapped_{model_type}/'
-    if os.path.isdir(save_base_path) is False:
-        os.mkdir(save_base_path)
+    bootstrapped_box_counts_df.to_csv(f'{save_base_path}bootstrapped_box_counts_df.csv', index=False, header=False)
+    bootstrapped_area_df.to_csv(f'{save_base_path}bootstrapped_area_df.csv',index=False, header=False)
 
+    return test_image_names, save_base_path
+
+
+def bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path):
+    print('bootstrap_analysis', ground_truth_min_follicular)
     # Data Exploration
-    bootstrap_viz.plot_histogram(box_counts_df, test_image_names, save_base_path)
-    bootstrap_viz.plot_scatter(box_counts_df, ground_truth_min_follicular, save_base_path)
+    bootstrap_viz.plot_histogram(bootstrapped_df, test_image_names, save_base_path)
+    bootstrap_viz.plot_scatter(bootstrapped_df, ground_truth_min_follicular, save_base_path)
 
     # Roc curve tutorials
-    y_true = box_counts_df[0] >= ground_truth_min_follicular
-    # y_pred = box_counts_df[1] >= predicted_min_follicular
+    y_true = bootstrapped_df[0] >= ground_truth_min_follicular
+    # y_pred = bootstrapped_df[1] >= predicted_min_follicular
     # plot_roc_curve(y_true, y_pred)
     # plot_precision_recall_curve(y_true, y_pred)
 
@@ -58,8 +60,12 @@ def run_bootstrap(model_type, load_path, img_root_path):
     recall_list = []
     f1_list = []
     predicted_min_follicular_list = []
-    for predicted_min_follicular in range(0, ground_truth_min_follicular * 2):
-        a_precision, a_recall, a_f1 = bootstrap.stats_at_threshold(box_counts_df, ground_truth_min_follicular,
+    for_step = 1
+    if len(str(ground_truth_min_follicular)) > 2:
+        for_step = 10**(len(str(int(ground_truth_min_follicular)))-2)
+    print('for_step', for_step)
+    for predicted_min_follicular in range(0, ground_truth_min_follicular * 2, for_step):
+        a_precision, a_recall, a_f1 = bootstrap.stats_at_threshold(bootstrapped_df, ground_truth_min_follicular,
                                                          predicted_min_follicular, DEBUG=True)
         predicted_min_follicular_list.append(predicted_min_follicular)
         precision_list.append(a_precision)
@@ -79,7 +85,7 @@ def convert_mask_to_box(ground_truth_mask_root_path):
     visualizer_obj.mask_to_box('generated/', ground_truth_mask_root_path, ground_truth_mask_names, 'ground_truth_3cat')
 
 
-def run_visualize_images(load_path, model_type, predict_box_type, img_root_path, ground_truth_mask_root_path):
+def run_visualize_images(load_path, model_type, img_root_path, ground_truth_mask_root_path):
 
     ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
     ground_truth_mask_names.sort()
@@ -94,18 +100,18 @@ def run_visualize_images(load_path, model_type, predict_box_type, img_root_path,
     #     os.mkdir(save_base_path)
     # print('save_base_path', save_base_path)
     #
-    # visualizer_obj.overlay_boxes(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
-    #                                 predicted_detection_boxes, predict_box_type=predict_box_type)
-    # bounding_box_per_image_distribution(save_base_path, ground_truth_mask_names, ground_truth_boxes, faster_rcnn_boxes, predict_box_type=model_type)
+    # visualizer_obj.overlay_boxes_over_images(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
+    #                                 predicted_detection_boxes, model_type=model_type)
+    # bounding_box_per_image_distribution(save_base_path, ground_truth_mask_names, ground_truth_boxes, faster_rcnn_boxes, model_type=model_type)
 
     # -------------------- Polygon Visualization -----------------------------
-    save_base_path = f"{load_path}/{model_type}_polygogn/"
+    save_base_path = f"{load_path}/{model_type}_polygon/"
     if os.path.isdir(save_base_path) is False:
         os.mkdir(save_base_path)
     print('save_base_path', save_base_path)
 
-    visualizer_obj.overlay_polygons(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
-                                    predicted_detection_boxes, predict_box_type=predict_box_type)
+    visualizer_obj.overlay_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names, ground_truth_boxes,
+                                    predicted_detection_boxes, model_type=model_type)
 
 
 def run_cam(model_type, img_root_path):
@@ -115,48 +121,57 @@ def run_cam(model_type, img_root_path):
     save_heatmap_path = f'generated/{model_type}_boxes/{feature_name}/'
     if os.path.isdir(save_heatmap_path) is False:
         os.mkdir(save_heatmap_path)
+    visualizer_obj = Visualizer()
     for image_name in tqdm(predicted_feature_maps.item().keys()):
         feature_map = predicted_feature_maps.item()[image_name][feature_name]
         visualizer_obj.visualize_feature_activation_map(feature_map, img_root_path, image_name, save_heatmap_path)
 
 
-def run_eval_for_tf_objection_detection_API():
-    # Data Path and boxes
-    base_path = '/media/bch_drive/Public/JunbongJang/'
+def get_data_path(model_type):
+    if 'faster' in model_type:
+        base_path = 'C:/Users/Jun/Documents/PycharmProjects/MARS-Net/'
+        ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
+        img_root_path = base_path + 'assets/FNA/FNA_test/img/'
+        # img_root_path = base_path + 'FNA/assets/all-patients/img/'
+        # img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/images_test/'
+        load_path = 'C:/Users/Jun/Documents/PycharmProjects/FNA/generated/'
+    else:
+        base_path = 'C:/Users/Jun/Documents/PycharmProjects/MARS-Net/'
+        # ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_valid_fold0/mask_processed/'
+        # img_root_path = base_path + 'assets/FNA/FNA_valid_fold0/img/'
+        # load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256/FNA_valid_fold0/frame2_A_repeat0/'
+        ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
+        img_root_path = base_path + 'assets/FNA/FNA_test/img/'
+        load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256_patience_10/FNA_test/frame2_training_repeat0/'
 
-    ground_truth_mask_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/masks_test/'
-    vUnet_mask_root_path = base_path + 'FNA/vUnet/average_hist/predict_wholeframe/all-patients/all-patients/'
+    save_base_path = f'{load_path}/bootstrapped_{model_type}/'
+    if os.path.isdir(save_base_path) is False:
+        os.mkdir(save_base_path)
 
-    # img_root_path = base_path + 'FNA/assets/all-patients/img/'
-    img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/images_test/'
-    # img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/combined_images_test/'
-    model_type = 'faster_640_backup'  # 'faster_640_stained_improved'
-    load_path = 'generated'
+    return ground_truth_mask_root_path, img_root_path, load_path, save_base_path
 
-    # run_bootstrap(model_type, load_path, img_root_path)
-    run_visualize_images(load_path, model_type, 'faster_rcnn', img_root_path, ground_truth_mask_root_path)
+
+def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path):
+    test_image_names = get_files_in_folder(img_root_path)
+    test_image_names.sort()
+
+    # bootstrap_data(test_image_names, model_type, 10000, load_path, save_base_path, img_root_path)
+
+    # bootstrapped_box_counts_df = pd.read_csv(f'{save_base_path}bootstrapped_box_counts_df.csv', header=None)
+    # ground_truth_min_follicular = int(bootstrapped_box_counts_df[0].mean())  # 100  # 15
+    # bootstrap_analysis(bootstrapped_box_counts_df, test_image_names, ground_truth_min_follicular, save_base_path)
+
+    bootstrapped_area_df = pd.read_csv(f'{save_base_path}bootstrapped_area_df.csv', header=None)
+    ground_truth_mean_area = int(bootstrapped_area_df[0].mean())
+    bootstrap_analysis(bootstrapped_area_df, test_image_names, ground_truth_mean_area, save_base_path)
+
+    # run_visualize_images(load_path, model_type, img_root_path, ground_truth_mask_root_path)
     # run_cam(model_type, img_root_path)
 
 
-def run_eval_for_MTL_classifier():
-    # created 7/26/2021
-    # Data Path and boxes
-    base_path = '/media/bch_drive/Public/JunbongJang/Segmentation/'
-
-    # ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_valid_fold0/mask_processed/'
-    # img_root_path = base_path + 'assets/FNA/FNA_valid_fold0/img/'
-    # load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256/FNA_valid_fold0/frame2_A_repeat0/'
-
-    ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
-    img_root_path = base_path + 'assets/FNA/FNA_test/img/'
-    load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256_patience_10/FNA_test/frame2_training_repeat0/'
-
-    model_type = 'pred'
-
-    # run_bootstrap(model_type, load_path, img_root_path)
-    run_visualize_images(load_path, model_type, 'MTL_auto_reg_aut', img_root_path, ground_truth_mask_root_path)
-
-
 if __name__ == "__main__":
-    # run_eval_for_tf_objection_detection_API()
-    run_eval_for_MTL_classifier()
+    # model_type = 'faster_640'  # 'faster_640_stained_improved'
+    model_type = 'MTL_auto_reg_aut'
+
+    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
+    run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)

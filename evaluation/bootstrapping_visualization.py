@@ -107,10 +107,8 @@ def plot_scatter(box_counts_df, ground_truth_min_follicular, save_base_path):
     plt.xlabel('Ground Truth Number of Follicular Clusters', fontsize='large')
     plt.ylabel('Predicted Number of Follicular Clusters', fontsize='large')
 
-    # plt.xlim(left=0, right=120)
-    # plt.ylim(bottom=0, top=120)
-    plt.xlim(left=0, right=1000)
-    plt.ylim(bottom=0, top=1000)
+    # plt.xlim(left=0, right=120) # right=1000
+    # plt.ylim(bottom=0, top=120)  # top=1000
     plt.grid(True)
     plt.savefig(save_base_path + 'data_scatter.png')
     plt.close()
@@ -219,7 +217,7 @@ def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list
     plt.ylabel('Performance', fontsize='large')
 
     # plt.ylim(bottom=0.8, top=1)
-    plt.xlim(left=0, right=len(predicted_min_follicular_list))
+    # plt.xlim(left=0, right=len(predicted_min_follicular_list))
     plt.legend()
     plt.grid()
     plt.savefig(save_base_path + 'performance_at_thresholds.png')

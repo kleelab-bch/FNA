@@ -13,10 +13,11 @@ https://machinelearningmastery.com/calculate-bootstrap-confidence-intervals-mach
 import pandas as pd
 from sklearn.utils import resample
 from bootstrapping_visualization import *
-import os
+from calc_polygon import connect_overlapped_boxes
+from tqdm import tqdm
 
 
-def bootstrap_box_counts(image_names, images_by_subject, np_ground_truth_boxes, np_model_prediction_boxes, bootstrap_repetition_num):
+def bootstrap_box_counts(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
     '''
     Count the total number of boxes per object detected image
     We assume each box represents one follicular cluster detection.
@@ -27,7 +28,7 @@ def bootstrap_box_counts(image_names, images_by_subject, np_ground_truth_boxes, 
     :param image_names:
     :param images_by_subject:
     :param np_ground_truth_boxes:
-    :param np_model_prediction_boxes:
+    :param np_prediction_boxes:
     :param bootstrap_repetition_num:
     :return:
     '''
@@ -38,7 +39,8 @@ def bootstrap_box_counts(image_names, images_by_subject, np_ground_truth_boxes, 
     testset_indices = np.arange(0, testset_sample_size, 1)
 
     box_counts = np.zeros(shape=(bootstrap_repetition_num, 2))
-    for bootstrap_repetition_index in range(bootstrap_repetition_num):
+    bootstrapped_areas = np.zeros(shape=(bootstrap_repetition_num, 2))
+    for bootstrap_repetition_index in tqdm(range(bootstrap_repetition_num)):
 
         # ------- bootstrap subjects ------
         if images_by_subject != None:
@@ -54,22 +56,40 @@ def bootstrap_box_counts(image_names, images_by_subject, np_ground_truth_boxes, 
                                              random_state=bootstrap_repetition_index)
 
         ground_truth_boxes_total = 0
-        model_prediction_boxes_total = 0
+        prediction_boxes_total = 0
+        ground_truth_area_total = 0
+        prediction_area_total = 0
+
         for chosen_image_name in bootstrap_sampled_image_names:
-            img_index = image_name_to_index[chosen_image_name]  # do this, enumerate() do not work
-            # count ground truth boxes
-            ground_truth_boxes = np_ground_truth_boxes.item()[img_index]  # chosen_image
+            img_index = image_name_to_index[chosen_image_name]
+            if 'faster' in model_type:
+                ground_truth_boxes = np_ground_truth_boxes.item()[chosen_image_name]
+                prediction_boxes = np_prediction_boxes.item()[chosen_image_name]
+                prediction_boxes = prediction_boxes.astype('float64')
+                prediction_boxes[:, 0], prediction_boxes[:, 2] = prediction_boxes[:, 0] * img_size['height'], prediction_boxes[:, 2] * img_size['height'] # 1944
+                prediction_boxes[:, 1], prediction_boxes[:, 3] = prediction_boxes[:, 1] * img_size['width'], prediction_boxes[:,3] * img_size['width']  # 2592
+            else:
+                ground_truth_boxes = np_ground_truth_boxes.item()[img_index]
+                prediction_boxes = np_prediction_boxes.item()[img_index]
+
             ground_truth_boxes_total = ground_truth_boxes_total + len(ground_truth_boxes)
+            ground_truth_polygon = connect_overlapped_boxes(ground_truth_boxes)
+            if not ground_truth_polygon.is_empty:
+                ground_truth_area_total = ground_truth_area_total + ground_truth_polygon.area
 
-            # count faster rcnn boxes
-            model_prediction_boxes = np_model_prediction_boxes.item()[img_index]  # chosen_image
-            model_prediction_boxes_total = model_prediction_boxes_total + len(model_prediction_boxes)
+            # count model prediction boxes
+            prediction_boxes_total = prediction_boxes_total + len(prediction_boxes)
+            predict_polygon = connect_overlapped_boxes(prediction_boxes)
+            if not predict_polygon.is_empty:
+                prediction_area_total = prediction_area_total + predict_polygon.area
 
-
-        box_counts[bootstrap_repetition_index, :] = ground_truth_boxes_total, model_prediction_boxes_total
+        box_counts[bootstrap_repetition_index, :] = ground_truth_boxes_total, prediction_boxes_total
+        bootstrapped_areas[bootstrap_repetition_index, :] = ground_truth_area_total, prediction_area_total
 
     box_counts_df = pd.DataFrame(box_counts)
-    return box_counts_df
+    bootstrapped_area_df = pd.DataFrame(bootstrapped_areas)
+
+    return box_counts_df, bootstrapped_area_df
 
 
 def count_boxes(image_names, input_boxes):
