@@ -16,21 +16,18 @@ import pandas as pd
 from PIL import Image
 
 
-def bootstrap_data(test_image_names, model_type, bootstrap_repetition_num, load_path, save_base_path, img_root_path):
-
-    np_predicted_detection_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
-    np_ground_truth_boxes = np.load(f"{load_path}/ground_truth_boxes.npy", allow_pickle=True)
-
+def bootstrap_data(test_image_names, model_type, bootstrap_repetition_num, np_predicted_detection_boxes, np_ground_truth_boxes, save_base_path, img_root_path):
+    # bootstrap both ground truth and prediction boxes
     print('Data Organization')
     test_images_by_subject = get_images_by_subject(test_image_names)
     print_images_by_subject_statistics(test_images_by_subject)
 
-    # Follicular Cluster Counting after bootstrapping
+    # bootstrap data and count Follicular Clusters in each bootstrap sample
     img_path = os.path.join(img_root_path, test_image_names[0])
     img = Image.open(img_path)  # load images from paths
     img_size = {}
     img_size['height'], img_size['width'] = img.size
-    bootstrapped_box_counts_df, bootstrapped_area_df = bootstrap.bootstrap_box_counts(test_image_names, test_images_by_subject, model_type, img_size,
+    bootstrapped_box_counts_df, bootstrapped_area_df = bootstrap.bootstrap_box_counts_area(test_image_names, test_images_by_subject, model_type, img_size,
                                                         np_ground_truth_boxes, np_predicted_detection_boxes, bootstrap_repetition_num)
 
     # box_counts_df.to_excel('generated/bootstrapped_box_counts.xlsx', index=False)
@@ -128,20 +125,18 @@ def run_cam(model_type, img_root_path):
 
 
 def get_data_path(model_type):
+    base_path = 'C:/Users/Jun/Documents/PycharmProjects/MARS-Net/'
+    ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
+    img_root_path = base_path + 'assets/FNA/FNA_test/img/'
     if 'faster' in model_type:
-        base_path = 'C:/Users/Jun/Documents/PycharmProjects/MARS-Net/'
-        ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
-        img_root_path = base_path + 'assets/FNA/FNA_test/img/'
         # img_root_path = base_path + 'FNA/assets/all-patients/img/'
         # img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/images_test/'
         load_path = 'C:/Users/Jun/Documents/PycharmProjects/FNA/generated/'
+
     else:
-        base_path = 'C:/Users/Jun/Documents/PycharmProjects/MARS-Net/'
         # ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_valid_fold0/mask_processed/'
         # img_root_path = base_path + 'assets/FNA/FNA_valid_fold0/img/'
         # load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256/FNA_valid_fold0/frame2_A_repeat0/'
-        ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
-        img_root_path = base_path + 'assets/FNA/FNA_test/img/'
         load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256_patience_10/FNA_test/frame2_training_repeat0/'
 
     save_base_path = f'{load_path}/bootstrapped_{model_type}/'
@@ -155,10 +150,18 @@ def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, 
     test_image_names = get_files_in_folder(img_root_path)
     test_image_names.sort()
 
-    # bootstrap_data(test_image_names, model_type, 10000, load_path, save_base_path, img_root_path)
+    np_predicted_detection_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
+    np_ground_truth_boxes = np.load(f"{load_path}/ground_truth_boxes.npy", allow_pickle=True)
+    # bootstrap_data(test_image_names, model_type, 10000, np_predicted_detection_boxes, np_ground_truth_boxes, save_base_path, img_root_path)
 
-    # bootstrapped_box_counts_df = pd.read_csv(f'{save_base_path}bootstrapped_box_counts_df.csv', header=None)
-    # ground_truth_min_follicular = int(bootstrapped_box_counts_df[0].mean())  # 100  # 15
+    bootstrapped_box_counts_df = pd.read_csv(f'{save_base_path}bootstrapped_box_counts_df.csv', header=None)
+
+    if 'faster' in model_type:
+        ground_truth_min_follicular = 6  # 15
+    else:
+        ground_truth_min_follicular = int(bootstrapped_box_counts_df[0].mean()/5)
+    print('ground_truth_min_follicular', ground_truth_min_follicular)
+
     # bootstrap_analysis(bootstrapped_box_counts_df, test_image_names, ground_truth_min_follicular, save_base_path)
 
     # bootstrapped_area_df = pd.read_csv(f'{save_base_path}bootstrapped_area_df.csv', header=None)
@@ -169,9 +172,36 @@ def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, 
     # run_cam(model_type, img_root_path)
 
 
+def run_eval_final():
+    # for bootstrap evaluation of MTL prediction:
+    model_type = 'MTL_auto_reg_aut'
+
+    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
+    ground_truth_box_load_path = 'C:/Users/Jun/Documents/PycharmProjects/FNA/generated/'
+    np_ground_truth_boxes = np.load(f"{ground_truth_box_load_path}/ground_truth_boxes.npy", allow_pickle=True)
+    np_prediction_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
+
+    test_image_names = get_files_in_folder(img_root_path)
+    test_image_names.sort()
+    test_images_by_subject = get_images_by_subject(test_image_names)
+    print_images_by_subject_statistics(test_images_by_subject)
+
+    # bootstrap data and count Follicular Clusters in each bootstrap sample
+    img_path = os.path.join(img_root_path, test_image_names[0])
+    img = Image.open(img_path)  # load images from paths
+    img_size = {}
+    img_size['height'], img_size['width'] = img.size
+
+
+    bootstrap.eval_bootstrap_box_count(test_image_names, test_images_by_subject, model_type, img_size,
+                                       np_ground_truth_boxes, np_prediction_boxes, 10, 6)
+
+
 if __name__ == "__main__":
     # model_type = 'faster_640'  # 'faster_640_stained_improved'
     model_type = 'MTL_auto_reg_aut'
 
     ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
+
+    # run_eval_final()

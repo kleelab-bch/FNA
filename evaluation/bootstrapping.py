@@ -16,8 +16,7 @@ from bootstrapping_visualization import *
 from calc_polygon import connect_overlapped_boxes
 from tqdm import tqdm
 
-
-def bootstrap_box_counts(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
+def eval_bootstrap_box_count(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num, min_follicular_clusters):
     '''
     Count the total number of boxes per object detected image
     We assume each box represents one follicular cluster detection.
@@ -36,7 +35,97 @@ def bootstrap_box_counts(image_names, images_by_subject, model_type, img_size, n
     for i, image_name in enumerate(image_names):
         image_name_to_index[image_name] = i
     testset_sample_size = len(image_names)
-    testset_indices = np.arange(0, testset_sample_size, 1)
+
+    tp = 0
+    fp = 0
+    tn = 0
+    fn = 0
+
+    for bootstrap_repetition_index in tqdm(range(bootstrap_repetition_num)):
+        # bootstrap number of correct prediction and the number of ground truth in each image
+        # ------- bootstrap subjects ------
+        if images_by_subject != None:
+            bootstrap_sampled_subjects = resample(list(images_by_subject.keys()), replace=True, n_samples=len(images_by_subject.keys()),
+                                                 random_state=bootstrap_repetition_index)
+            # only get images from sampled subjects
+            image_names = []
+            for bootstrap_sampled_subject in bootstrap_sampled_subjects:
+                image_names = image_names + images_by_subject[bootstrap_sampled_subject]
+
+        # ------- bootstrap images ---------
+        bootstrap_sampled_image_names = resample(image_names, replace=True, n_samples=testset_sample_size,
+                                             random_state=bootstrap_repetition_index)
+
+        pred_boxes_of_all_images = 0
+        gt_boxes_of_all_images = 0
+        intersect_boxes_of_all_images = 0
+
+        for chosen_image_name in bootstrap_sampled_image_names:
+            img_index = image_name_to_index[chosen_image_name]
+            if 'faster' in model_type:
+                ground_truth_boxes = np_ground_truth_boxes.item()[chosen_image_name]
+                prediction_boxes = np_prediction_boxes.item()[chosen_image_name]
+                prediction_boxes = prediction_boxes.astype('float64')
+                prediction_boxes[:, 0], prediction_boxes[:, 2] = prediction_boxes[:, 0] * img_size['height'], prediction_boxes[:, 2] * img_size['height'] # 1944
+                prediction_boxes[:, 1], prediction_boxes[:, 3] = prediction_boxes[:, 1] * img_size['width'], prediction_boxes[:,3] * img_size['width']  # 2592
+
+            elif 'MTL_auto_reg_aut' in model_type:
+                ground_truth_boxes = np_ground_truth_boxes.item()[chosen_image_name]
+                prediction_boxes = np_prediction_boxes.item()[img_index]
+
+            ground_truth_polygon = connect_overlapped_boxes(ground_truth_boxes)
+            predict_polygon = connect_overlapped_boxes(prediction_boxes)
+
+            # count ground truth boxes inside prediction box
+            overlapped_polygon = predict_polygon.intersection(ground_truth_polygon)
+            union_polygon = predict_polygon.union(ground_truth_polygon)
+
+            # count overlapped boxes between two images containing polygons
+            pred_boxes_of_all_images = pred_boxes_of_all_images + count_polygons(predict_polygon)
+            gt_boxes_of_all_images = gt_boxes_of_all_images + count_polygons(ground_truth_polygon)
+            intersect_boxes_of_all_images = intersect_boxes_of_all_images + count_polygons(overlapped_polygon)
+
+        # ------- print statistics ------
+        if intersect_boxes_of_all_images >= min_follicular_clusters:
+            tp = tp + 1
+        elif intersect_boxes_of_all_images < min_follicular_clusters and gt_boxes_of_all_images < min_follicular_clusters:
+            tn = tn + 1
+        elif intersect_boxes_of_all_images < min_follicular_clusters and gt_boxes_of_all_images >= min_follicular_clusters:
+            fn = fn + 1
+        elif pred_boxes_of_all_images >= min_follicular_clusters and gt_boxes_of_all_images < min_follicular_clusters:
+            fn = fn + 1
+
+    print('tp', tp, 'fp', fp, 'fn', fn, 'tn', tn)
+
+
+def count_polygons(polygon_obj):
+    total_count = 0
+    if not polygon_obj.is_empty:
+        if polygon_obj.geom_type == 'MultiPolygon':
+            total_count = len(polygon_obj)
+        elif polygon_obj.geom_type == 'Polygon':
+            total_count = 1
+    return total_count
+
+def bootstrap_box_counts_area(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
+    '''
+    Count the total number of boxes per object detected image
+    We assume each box represents one follicular cluster detection.
+    Secretion/Artifact boxes should have been processed and removed beforehand.
+
+    Hierachical bootstrapping if images_by_subject is not None
+
+    :param image_names:
+    :param images_by_subject:
+    :param np_ground_truth_boxes:
+    :param np_prediction_boxes:
+    :param bootstrap_repetition_num:
+    :return:
+    '''
+    image_name_to_index = {}
+    for i, image_name in enumerate(image_names):
+        image_name_to_index[image_name] = i
+    testset_sample_size = len(image_names)
 
     box_counts = np.zeros(shape=(bootstrap_repetition_num, 2))
     bootstrapped_areas = np.zeros(shape=(bootstrap_repetition_num, 2))
@@ -68,6 +157,7 @@ def bootstrap_box_counts(image_names, images_by_subject, model_type, img_size, n
                 prediction_boxes = prediction_boxes.astype('float64')
                 prediction_boxes[:, 0], prediction_boxes[:, 2] = prediction_boxes[:, 0] * img_size['height'], prediction_boxes[:, 2] * img_size['height'] # 1944
                 prediction_boxes[:, 1], prediction_boxes[:, 3] = prediction_boxes[:, 1] * img_size['width'], prediction_boxes[:,3] * img_size['width']  # 2592
+
             else:
                 ground_truth_boxes = np_ground_truth_boxes.item()[img_index]
                 prediction_boxes = np_prediction_boxes.item()[img_index]

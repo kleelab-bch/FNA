@@ -204,7 +204,7 @@ class Visualizer:
             img_path = os.path.join(img_root_path, filename)
             img = Image.open(img_path)  # load images from paths
 
-            if model_type == 'faster_rcnn':
+            if 'faster' in model_type:
                 orig_filename = filename.replace('predict', '').replace('stained_', '')
                 one_ground_truth_boxes = ground_truth_boxes.item()[orig_filename]
                 one_predicted_boxes = prediction_boxes.item()[filename]
@@ -232,9 +232,8 @@ class Visualizer:
                 # combined_boxed_image = self.draw_bounding_boxes(combined_boxed_image, two_ground_truth_boxes, color='red', thickness=16)
                 # combined_boxed_image = self.draw_bounding_boxes(combined_boxed_image, three_ground_truth_boxes, color='green', thickness=16)
 
-                combined_boxed_image = img
-                combined_boxed_image = self.draw_bounding_boxes(img, one_ground_truth_boxes, color=(255,1,153))
-                combined_boxed_image = self.draw_bounding_boxes(combined_boxed_image, one_predicted_boxes, color=(50, 50, 50))
+                combined_boxed_image = self.draw_bounding_boxes(img, one_ground_truth_boxes, color=(255,0,0))
+                combined_boxed_image = self.draw_bounding_boxes(combined_boxed_image, one_predicted_boxes, color=(0, 255, 0))
 
                 gt_overlaps, false_negative, false_positive, gt_overlap_pairs = count_overlap_box(one_ground_truth_boxes, one_predicted_boxes)
                 print(gt_overlaps, false_negative, false_positive)
@@ -242,7 +241,7 @@ class Visualizer:
                 # since PIL draw do not blend lines, I manually draw the overlapped boxes with different color
                 overlapped_ground_truth_box_indices = [gt_overlap_pair[0] for gt_overlap_pair in gt_overlap_pairs]
                 combined_boxed_image = self.draw_bounding_boxes(combined_boxed_image, one_ground_truth_boxes[overlapped_ground_truth_box_indices],
-                                                                         color=(137, 255, 41))
+                                                                         color=(255, 255, 0))
 
                 combined_boxed_image.save(save_path)
 
@@ -303,7 +302,7 @@ class Visualizer:
                 pred_area_of_all_images = pred_area_of_all_images + predict_polygon.area
                 gt_area_of_all_images = gt_area_of_all_images + ground_truth_polygon.area
                 intersect_area_of_all_images = intersect_area_of_all_images + overlapped_polygon.area
-                union_area_of_all_images = union_area_of_all_images  + predict_polygon.union(ground_truth_polygon).area
+                union_area_of_all_images = union_area_of_all_images + predict_polygon.union(ground_truth_polygon).area
 
         # ------- print statistics ------
         print(pred_area_of_all_images, gt_area_of_all_images, intersect_area_of_all_images, union_area_of_all_images)
