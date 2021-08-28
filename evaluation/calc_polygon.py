@@ -124,3 +124,49 @@ def count_overlap_box(ground_truth_boxes, predicted_boxes):
     false_negative = total_gt_boxes - gt_overlaps
 
     return gt_overlaps, false_negative, false_positive, gt_overlap_pair
+
+
+
+def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
+    if ground_truth_polygons.geom_type == 'Polygon':
+        total_gt_polygons = 1
+        ground_truth_polygons = [ground_truth_polygons]
+    else:
+        total_gt_polygons = len(ground_truth_polygons)
+
+    if predicted_polygons.geom_type == 'Polygon':
+        predicted_polygons = [predicted_polygons]
+
+    gt_overlaps = 0
+    gt_overlap_pair = []
+    # For every ground truth box against all prediction polygons
+    for i, ground_truth_polygon in enumerate(ground_truth_polygons):
+        for j, predicted_polygon in enumerate(predicted_polygons):
+            overlapped_area = ground_truth_polygon.intersection(predicted_polygon).area
+            # If overlapped area is greater than 50% of ground truth or prediction polygon
+            if overlapped_area > ground_truth_polygon.area * 0.5 or overlapped_area > predicted_polygon.area * 0.5:
+                # For one prediction, count all ground truth inside it
+                # For one ground truth, count only once for prediction polygons inside it
+                gt_overlaps = gt_overlaps + 1
+                gt_overlap_pair.append((i,j))
+                break
+
+    not_fp_pair = []
+    # to count false_positive
+    false_positive = 0
+    for i, predicted_polygon in enumerate(predicted_polygons):
+        false_positive_flag = True
+        for j, ground_truth_polygon in enumerate(ground_truth_polygons):
+            overlapped_area = ground_truth_polygon.intersection(predicted_polygon).area
+            if overlapped_area > ground_truth_polygon.area * 0.5 or overlapped_area > predicted_polygon.area * 0.5:
+                false_positive_flag = False
+                not_fp_pair.append((i,j))
+                break
+        if false_positive_flag:
+            false_positive = false_positive + 1
+
+    false_negative = total_gt_polygons - gt_overlaps
+
+    return gt_overlaps, false_negative, false_positive, gt_overlap_pair
+
+

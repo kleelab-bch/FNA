@@ -20,6 +20,7 @@ import os
 from PIL import Image 
 import PIL.ImageDraw as ImageDraw
 from sklearn.linear_model import LinearRegression
+import numpy as np
 
 from matplotlib import pyplot as plt
 from scipy import ndimage
@@ -236,6 +237,7 @@ class Visualizer:
                 combined_boxed_image = self.draw_bounding_boxes(combined_boxed_image, one_predicted_boxes, color=(0, 255, 0))
 
                 gt_overlaps, false_negative, false_positive, gt_overlap_pairs = count_overlap_box(one_ground_truth_boxes, one_predicted_boxes)
+                print(filename)
                 print(gt_overlaps, false_negative, false_positive)
 
                 # since PIL draw do not blend lines, I manually draw the overlapped boxes with different color

@@ -16,7 +16,17 @@ from bootstrapping_visualization import *
 from calc_polygon import connect_overlapped_boxes
 from tqdm import tqdm
 
-def eval_bootstrap_box_count(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num, min_follicular_clusters):
+
+def count_polygons(polygon_obj):
+    total_count = 0
+    if not polygon_obj.is_empty:
+        if polygon_obj.geom_type == 'MultiPolygon':
+            total_count = len(polygon_obj)
+        elif polygon_obj.geom_type == 'Polygon':
+            total_count = 1
+    return total_count
+
+def bootstrap_box_counts_area(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
     '''
     Count the total number of boxes per object detected image
     We assume each box represents one follicular cluster detection.
@@ -36,13 +46,10 @@ def eval_bootstrap_box_count(image_names, images_by_subject, model_type, img_siz
         image_name_to_index[image_name] = i
     testset_sample_size = len(image_names)
 
-    tp = 0
-    fp = 0
-    tn = 0
-    fn = 0
-
+    box_counts = np.zeros(shape=(bootstrap_repetition_num, 2))
+    bootstrapped_areas = np.zeros(shape=(bootstrap_repetition_num, 2))
     for bootstrap_repetition_index in tqdm(range(bootstrap_repetition_num)):
-        # bootstrap number of correct prediction and the number of ground truth in each image
+
         # ------- bootstrap subjects ------
         if images_by_subject != None:
             bootstrap_sampled_subjects = resample(list(images_by_subject.keys()), replace=True, n_samples=len(images_by_subject.keys()),
@@ -56,9 +63,10 @@ def eval_bootstrap_box_count(image_names, images_by_subject, model_type, img_siz
         bootstrap_sampled_image_names = resample(image_names, replace=True, n_samples=testset_sample_size,
                                              random_state=bootstrap_repetition_index)
 
-        pred_boxes_of_all_images = 0
-        gt_boxes_of_all_images = 0
-        intersect_boxes_of_all_images = 0
+        ground_truth_boxes_total = 0
+        prediction_boxes_total = 0
+        ground_truth_area_total = 0
+        prediction_area_total = 0
 
         for chosen_image_name in bootstrap_sampled_image_names:
             img_index = image_name_to_index[chosen_image_name]
@@ -69,45 +77,32 @@ def eval_bootstrap_box_count(image_names, images_by_subject, model_type, img_siz
                 prediction_boxes[:, 0], prediction_boxes[:, 2] = prediction_boxes[:, 0] * img_size['height'], prediction_boxes[:, 2] * img_size['height'] # 1944
                 prediction_boxes[:, 1], prediction_boxes[:, 3] = prediction_boxes[:, 1] * img_size['width'], prediction_boxes[:,3] * img_size['width']  # 2592
 
-            elif 'MTL_auto_reg_aut' in model_type:
-                ground_truth_boxes = np_ground_truth_boxes.item()[chosen_image_name]
+            else:
+                ground_truth_boxes = np_ground_truth_boxes.item()[img_index]
                 prediction_boxes = np_prediction_boxes.item()[img_index]
 
+            ground_truth_boxes_total = ground_truth_boxes_total + len(ground_truth_boxes)
             ground_truth_polygon = connect_overlapped_boxes(ground_truth_boxes)
+            if not ground_truth_polygon.is_empty:
+                ground_truth_area_total = ground_truth_area_total + ground_truth_polygon.area
+
+            # count model prediction boxes
+            prediction_boxes_total = prediction_boxes_total + len(prediction_boxes)
             predict_polygon = connect_overlapped_boxes(prediction_boxes)
+            if not predict_polygon.is_empty:
+                prediction_area_total = prediction_area_total + predict_polygon.area
 
-            # count ground truth boxes inside prediction box
-            overlapped_polygon = predict_polygon.intersection(ground_truth_polygon)
-            union_polygon = predict_polygon.union(ground_truth_polygon)
+        box_counts[bootstrap_repetition_index, :] = ground_truth_boxes_total, prediction_boxes_total
+        bootstrapped_areas[bootstrap_repetition_index, :] = ground_truth_area_total, prediction_area_total
 
-            # count overlapped boxes between two images containing polygons
-            pred_boxes_of_all_images = pred_boxes_of_all_images + count_polygons(predict_polygon)
-            gt_boxes_of_all_images = gt_boxes_of_all_images + count_polygons(ground_truth_polygon)
-            intersect_boxes_of_all_images = intersect_boxes_of_all_images + count_polygons(overlapped_polygon)
+    box_counts_df = pd.DataFrame(box_counts)
+    bootstrapped_area_df = pd.DataFrame(bootstrapped_areas)
 
-        # ------- print statistics ------
-        if intersect_boxes_of_all_images >= min_follicular_clusters:
-            tp = tp + 1
-        elif intersect_boxes_of_all_images < min_follicular_clusters and gt_boxes_of_all_images < min_follicular_clusters:
-            tn = tn + 1
-        elif intersect_boxes_of_all_images < min_follicular_clusters and gt_boxes_of_all_images >= min_follicular_clusters:
-            fn = fn + 1
-        elif pred_boxes_of_all_images >= min_follicular_clusters and gt_boxes_of_all_images < min_follicular_clusters:
-            fn = fn + 1
-
-    print('tp', tp, 'fp', fp, 'fn', fn, 'tn', tn)
+    return box_counts_df, bootstrapped_area_df
 
 
-def count_polygons(polygon_obj):
-    total_count = 0
-    if not polygon_obj.is_empty:
-        if polygon_obj.geom_type == 'MultiPolygon':
-            total_count = len(polygon_obj)
-        elif polygon_obj.geom_type == 'Polygon':
-            total_count = 1
-    return total_count
 
-def bootstrap_box_counts_area(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
+def bootstrap_box_polygon(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
     '''
     Count the total number of boxes per object detected image
     We assume each box represents one follicular cluster detection.
