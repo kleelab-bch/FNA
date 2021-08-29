@@ -85,6 +85,24 @@ def find_interior_polygons_of_a_polygon(polygons):
     return new_polygons
 
 
+def count_polygons(polygon_obj):
+    total_count = 0
+    if not polygon_obj.is_empty:
+        if polygon_obj.geom_type == 'MultiPolygon':
+            total_count = len(polygon_obj)
+        elif polygon_obj.geom_type == 'Polygon':
+            total_count = 1
+    return total_count
+
+
+def count_boxes(image_names, input_boxes):
+    boxes_total = 0
+    for image_name in image_names:
+        boxes = input_boxes.item()[image_name]
+        boxes_total = boxes_total + len(boxes)
+    return boxes_total
+
+
 def count_overlap_box(ground_truth_boxes, predicted_boxes):
     total_gt_boxes = ground_truth_boxes.shape[0]
     gt_overlaps = 0

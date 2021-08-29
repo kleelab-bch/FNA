@@ -12,19 +12,72 @@ https://machinelearningmastery.com/calculate-bootstrap-confidence-intervals-mach
 
 import pandas as pd
 from sklearn.utils import resample
+from tqdm import tqdm
+from PIL import Image
+import os
+
 from bootstrapping_visualization import *
 from calc_polygon import connect_overlapped_boxes
-from tqdm import tqdm
+import bootstrapping_visualization as bootstrap_viz
+from explore_data import get_images_by_subject, print_images_by_subject_statistics
 
 
-def count_polygons(polygon_obj):
-    total_count = 0
-    if not polygon_obj.is_empty:
-        if polygon_obj.geom_type == 'MultiPolygon':
-            total_count = len(polygon_obj)
-        elif polygon_obj.geom_type == 'Polygon':
-            total_count = 1
-    return total_count
+def bootstrap_data(test_image_names, model_type, bootstrap_repetition_num, np_predicted_detection_boxes, np_ground_truth_boxes, save_base_path, img_root_path):
+    # bootstrap both ground truth and prediction boxes
+    print('Data Organization')
+    test_images_by_subject = get_images_by_subject(test_image_names)
+    print_images_by_subject_statistics(test_images_by_subject)
+
+    # bootstrap data and count Follicular Clusters in each bootstrap sample
+    img_path = os.path.join(img_root_path, test_image_names[0])
+    img = Image.open(img_path)  # load images from paths
+    img_size = {}
+    img_size['height'], img_size['width'] = img.size
+    bootstrapped_box_counts_df, bootstrapped_area_df = bootstrap_box_counts_area(test_image_names, test_images_by_subject, model_type, img_size,
+                                                        np_ground_truth_boxes, np_predicted_detection_boxes, bootstrap_repetition_num)
+
+    print('bootstrapped data shape: ', bootstrapped_box_counts_df.shape, bootstrapped_area_df.shape)
+    print()
+
+    bootstrapped_box_counts_df.to_csv(f'{save_base_path}bootstrapped_box_counts_df.csv', index=False, header=False)
+    bootstrapped_area_df.to_csv(f'{save_base_path}bootstrapped_area_df.csv',index=False, header=False)
+
+    return test_image_names, save_base_path
+
+
+def bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path):
+    print('bootstrap_analysis', ground_truth_min_follicular)
+    # Data Exploration
+    bootstrap_viz.plot_histogram(bootstrapped_df, test_image_names, save_base_path)
+    bootstrap_viz.plot_scatter(bootstrapped_df, ground_truth_min_follicular, save_base_path)
+
+    # Roc curve tutorials
+    y_true = bootstrapped_df[0] >= ground_truth_min_follicular
+    # y_pred = bootstrapped_df[1] >= predicted_min_follicular
+    # plot_roc_curve(y_true, y_pred)
+    # plot_precision_recall_curve(y_true, y_pred)
+
+    # -------- Varying Predicted Min Follicular Thresholds ------------
+    precision_list = []
+    recall_list = []
+    f1_list = []
+    predicted_min_follicular_list = []
+    for_step = 1
+    if len(str(ground_truth_min_follicular)) > 2:
+        for_step = 10**(len(str(int(ground_truth_min_follicular)))-2)
+    print('for_step', for_step)
+    for predicted_min_follicular in range(0, ground_truth_min_follicular * 2, for_step):
+        a_precision, a_recall, a_f1 = stats_at_threshold(bootstrapped_df, ground_truth_min_follicular,
+                                                         predicted_min_follicular, DEBUG=True)
+        predicted_min_follicular_list.append(predicted_min_follicular)
+        precision_list.append(a_precision)
+        recall_list.append(a_recall)
+        f1_list.append(a_f1)
+
+    bootstrap_viz.plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, save_base_path)
+    bootstrap_viz.plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list,
+                                   save_base_path)
+
 
 def bootstrap_box_counts_area(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
     '''
@@ -101,7 +154,6 @@ def bootstrap_box_counts_area(image_names, images_by_subject, model_type, img_si
     return box_counts_df, bootstrapped_area_df
 
 
-
 def bootstrap_box_polygon(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):
     '''
     Count the total number of boxes per object detected image
@@ -175,14 +227,6 @@ def bootstrap_box_polygon(image_names, images_by_subject, model_type, img_size, 
     bootstrapped_area_df = pd.DataFrame(bootstrapped_areas)
 
     return box_counts_df, bootstrapped_area_df
-
-
-def count_boxes(image_names, input_boxes):
-    boxes_total = 0
-    for image_name in image_names:
-        boxes = input_boxes.item()[image_name]
-        boxes_total = boxes_total + len(boxes)
-    return boxes_total
 
 
 def stats_at_threshold(box_counts_df, ground_truth_min_follicular, predicted_min_follicular, DEBUG):
