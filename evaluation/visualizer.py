@@ -26,6 +26,10 @@ from matplotlib import pyplot as plt
 from scipy import ndimage
 from calc_polygon import *
 
+import rasterio
+from rasterio import features
+import shapely
+from shapely.geometry import Point, Polygon
 
 class Visualizer:
     def __init__(self):
@@ -163,7 +167,7 @@ class Visualizer:
         return cleaned_mask
 
 
-    def open_mask(path):
+    def open_mask(self, path):
         mask = Image.open(path)
         if mask.format != 'PNG':
             raise ValueError('Mask format is not PNG')
@@ -172,7 +176,7 @@ class Visualizer:
 
 
     def mask_to_box(self, save_base_path, mask_root_path, mask_names, box_type):
-        print('mask_tol_box')
+        print('mask_to_box')
         saved_boxes = {}
         for idx, filename in enumerate(mask_names):
             mask_path = os.path.join(mask_root_path, filename)
@@ -189,6 +193,38 @@ class Visualizer:
                 print('box type None')
 
         np.save(save_base_path + '{}_boxes.npy'.format(box_type), saved_boxes)
+
+
+    def mask_to_polygons(self, mask_root_path, mask_names):
+        print('mask_to_polygons')
+        list_of_polygons = []
+        for idx, filename in enumerate(mask_names):
+            print(filename)
+            mask_path = os.path.join(mask_root_path, filename)
+            a_mask = self.open_mask(mask_path)
+            # only get value 76
+            polygons = self.mask_to_polygons_layer(a_mask)
+            list_of_polygons.append(polygons)
+
+        return list_of_polygons
+
+
+    # https://rocreguant.com/convert-a-mask-into-a-polygon-for-images-using-shapely-and-rasterio/1786/
+    def mask_to_polygons_layer(self, mask):
+        all_polygons = []
+        for shape, value in features.shapes(mask.astype(np.uint8), mask=(mask > 0), transform=rasterio.Affine(1.0, 0, 0, 0, 1.0, 0)):
+            all_polygons.append(shapely.geometry.shape(shape))
+
+        all_polygons = gpd.GeoSeries(unary_union(all_polygons))[0]
+        #
+        # all_polygons = shapely.geometry.MultiPolygon(all_polygons)
+        # if not all_polygons.is_valid:
+        #     all_polygons = all_polygons.buffer(0)
+        #     # Sometimes buffer() converts a simple Multipolygon to just a Polygon,
+        #     # need to keep it a Multi throughout
+        #     if all_polygons.type == 'Polygon':
+        #         all_polygons = shapely.geometry.MultiPolygon([all_polygons])
+        return all_polygons
 
 
     def overlay_boxes_over_images(self, save_base_path, img_root_path, mask_names, ground_truth_boxes, prediction_boxes, model_type):

@@ -42,8 +42,8 @@ def calculate_box_area(box):
 
 from shapely.ops import unary_union
 import geopandas as gpd
-from shapely.geometry import Polygon
-def connect_overlapped_boxes(boxes):
+from shapely.geometry import Polygon, MultiPolygon
+def convert_boxes_to_polygons(boxes, is_union_boxes=True):
     # connect boxes to form a big polygon
     def convert_box_coordinate_to_polygon(box):
         # from box coordinates ymin, xmin, ymax, xmax to (x1,y1), (x2,y2), (x3,y3), (x4,y4)
@@ -59,7 +59,8 @@ def connect_overlapped_boxes(boxes):
         polygon = convert_box_coordinate_to_polygon(box)
         polygons.append(polygon)
 
-    polygons = gpd.GeoSeries(unary_union(polygons))[0]  # connect_overlapped_boxes
+    if is_union_boxes:
+        polygons = gpd.GeoSeries(unary_union(polygons))[0]  # connect_overlapped_boxes
 
     # below is not necessary because shapely polygon already figures out which polygons are interiors with unary_union
     # if polygons.boundary.geom_type == 'MultiLineString':

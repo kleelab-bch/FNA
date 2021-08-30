@@ -17,7 +17,7 @@ from PIL import Image
 import os
 
 from bootstrapping_visualization import *
-from calc_polygon import connect_overlapped_boxes
+from calc_polygon import convert_boxes_to_polygons
 import bootstrapping_visualization as bootstrap_viz
 from explore_data import get_images_by_subject, print_images_by_subject_statistics
 
@@ -135,13 +135,13 @@ def bootstrap_box_counts_area(image_names, images_by_subject, model_type, img_si
                 prediction_boxes = np_prediction_boxes.item()[img_index]
 
             ground_truth_boxes_total = ground_truth_boxes_total + len(ground_truth_boxes)
-            ground_truth_polygon = connect_overlapped_boxes(ground_truth_boxes)
+            ground_truth_polygon = convert_boxes_to_polygons(ground_truth_boxes)
             if not ground_truth_polygon.is_empty:
                 ground_truth_area_total = ground_truth_area_total + ground_truth_polygon.area
 
             # count model prediction boxes
             prediction_boxes_total = prediction_boxes_total + len(prediction_boxes)
-            predict_polygon = connect_overlapped_boxes(prediction_boxes)
+            predict_polygon = convert_boxes_to_polygons(prediction_boxes)
             if not predict_polygon.is_empty:
                 prediction_area_total = prediction_area_total + predict_polygon.area
 
@@ -210,13 +210,13 @@ def bootstrap_box_polygon(image_names, images_by_subject, model_type, img_size, 
                 prediction_boxes = np_prediction_boxes.item()[img_index]
 
             ground_truth_boxes_total = ground_truth_boxes_total + len(ground_truth_boxes)
-            ground_truth_polygon = connect_overlapped_boxes(ground_truth_boxes)
+            ground_truth_polygon = convert_boxes_to_polygons(ground_truth_boxes)
             if not ground_truth_polygon.is_empty:
                 ground_truth_area_total = ground_truth_area_total + ground_truth_polygon.area
 
             # count model prediction boxes
             prediction_boxes_total = prediction_boxes_total + len(prediction_boxes)
-            predict_polygon = connect_overlapped_boxes(prediction_boxes)
+            predict_polygon = convert_boxes_to_polygons(prediction_boxes)
             if not predict_polygon.is_empty:
                 prediction_area_total = prediction_area_total + predict_polygon.area
 

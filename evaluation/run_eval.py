@@ -10,7 +10,7 @@ from tqdm import tqdm
 import pandas as pd
 from PIL import Image
 
-from calc_polygon import connect_overlapped_boxes, count_overlap_polygons
+from calc_polygon import convert_boxes_to_polygons, count_overlap_polygons
 from visualizer import Visualizer
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
 from bootstrapping import bootstrap_analysis, bootstrap_data
@@ -22,6 +22,15 @@ def convert_mask_to_box(ground_truth_mask_root_path):
 
     visualizer_obj = Visualizer()
     visualizer_obj.mask_to_box('generated/', ground_truth_mask_root_path, ground_truth_mask_names, 'ground_truth_3cat')
+
+
+def convert_mask_to_polygon(ground_truth_mask_root_path):
+    # return list of polygons
+    ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
+    ground_truth_mask_names.sort()
+
+    visualizer_obj = Visualizer()
+    return visualizer_obj.mask_to_polygons(ground_truth_mask_root_path, ground_truth_mask_names)
 
 
 def run_visualize_images(load_path, model_type, img_root_path, ground_truth_mask_root_path):
@@ -67,13 +76,13 @@ def run_cam(model_type, img_root_path):
 
 
 def get_data_path(model_type):
-    base_path = 'C:/Users/Jun/Documents/PycharmProjects/MARS-Net/'
+    base_path = 'C:/Users/JunbongJang/PycharmProjects/MARS-Net/'
     ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
     img_root_path = base_path + 'assets/FNA/FNA_test/img/'
     if 'faster' in model_type:
         # img_root_path = base_path + 'FNA/assets/all-patients/img/'
         # img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/images_test/'
-        load_path = 'C:/Users/Jun/Documents/PycharmProjects/FNA/generated/'
+        load_path = 'C:/Users/JunbongJang/PycharmProjects/FNA/generated/'
 
     else:
         # ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_valid_fold0/mask_processed/'
@@ -112,9 +121,10 @@ def run_eval_final():
     # get MTL boxes
     model_type = 'MTL_auto_reg_aut'
     ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
-    ground_truth_box_load_path = 'C:/Users/Jun/Documents/PycharmProjects/FNA/generated/'
-    ground_truth_boxes = np.load(f"{ground_truth_box_load_path}/ground_truth_boxes.npy", allow_pickle=True)
+    ground_truth_box_load_path = 'C:/Users/JunbongJang/PycharmProjects/FNA/generated/'
+    # ground_truth_boxes = np.load(f"{ground_truth_box_load_path}/ground_truth_boxes.npy", allow_pickle=True)
     mtl_prediction_images_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
+    list_of_ground_truth_polygons = convert_mask_to_polygon(ground_truth_mask_root_path)
 
     # get Faster R-CNN boxes
     model_type = 'faster_640'
@@ -136,7 +146,7 @@ def run_eval_final():
     ground_truth_mask_names.sort()
 
     # -------------------- Polygon Visualization -----------------------------
-    model_type = 'MTL_faster-rcnn_overlap'
+    model_type = 'faster-rcnn_overlap'
     save_base_path = f"{load_path}/{model_type}_polygon/"
     if os.path.isdir(save_base_path) is False:
         os.mkdir(save_base_path)
@@ -151,8 +161,8 @@ def run_eval_final():
         img_path = os.path.join(img_root_path, filename)
         img = Image.open(img_path)  # load images from paths
 
-        orig_filename = filename.replace('predict', '').replace('stained_', '')
-        one_ground_truth_boxes = ground_truth_boxes.item()[orig_filename]
+        one_ground_truth_polygons = list_of_ground_truth_polygons[idx]
+
         faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename]
 
         faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,
@@ -164,22 +174,21 @@ def run_eval_final():
 
         mtl_predicted_boxes = mtl_prediction_images_boxes.item()[idx]
 
-        if one_ground_truth_boxes.shape[0] > 0 or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
+        if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
             # if there is at least one prediction or ground truth box in the image
 
             # convert MTL boxes to polygons
             # convert Faster R-CNN boxes to polygons
             # convert ground truth boxes to polygons
-            faster_rcnn_polygon = connect_overlapped_boxes(faster_rcnn_predicted_boxes)
-            mtl_polygon = connect_overlapped_boxes(mtl_predicted_boxes)
-            ground_truth_polygon = connect_overlapped_boxes(one_ground_truth_boxes)
+            faster_rcnn_polygon = convert_boxes_to_polygons(faster_rcnn_predicted_boxes)
+            mtl_polygon = convert_boxes_to_polygons(mtl_predicted_boxes)
 
             # overlap MTL polygons with Faster R-CNN polygons
-            overlapped_prediction_polygon = faster_rcnn_polygon.intersection(mtl_polygon)
+            overlapped_prediction_polygon = faster_rcnn_polygon # faster_rcnn_polygon.intersection(mtl_polygon)
             # overlap MTL + Faster R-CNN polygon with ground truth polygon
-            overlapped_final_polygon = overlapped_prediction_polygon.intersection(ground_truth_polygon)
+            overlapped_final_polygon = overlapped_prediction_polygon.intersection(one_ground_truth_polygons)
             # Count overlapped polygons
-            gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(ground_truth_polygon, overlapped_prediction_polygon)
+            gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons, overlapped_prediction_polygon)
             if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
                 print(idx, filename)
                 print(gt_overlaps, false_negative, false_positive)
@@ -188,7 +197,7 @@ def run_eval_final():
             total_false_positive = total_false_positive + false_positive
 
             # overlay polygon over the image
-            overlaid_img = visualizer.overlay_polygons(img, ground_truth_polygon, (255, 0, 0), True)
+            overlaid_img = visualizer.overlay_polygons(img, one_ground_truth_polygons, (255, 0, 0), True)
             overlaid_img = visualizer.overlay_polygons(overlaid_img, overlapped_prediction_polygon, (0, 255, 0), True)
             overlaid_img = visualizer.overlay_polygons(overlaid_img, overlapped_final_polygon, (255, 255, 0), True)
             save_filename = save_base_path + filename
@@ -205,7 +214,7 @@ def run_eval_final():
 
     # -----------------------------------------------------
     # Bootstrap number of overlapped polygons per image
-    # model_type = 'bootstrapped_MTL_faster-rcnn_polygon'
+    # model_type = 'bootstrapped_MTL_faster-rcnn_overlap_polygons'
     # save_base_path = f"{load_path}/{model_type}_polygon/"
     # if os.path.isdir(save_base_path) is False:
     #     os.mkdir(save_base_path)
@@ -261,13 +270,13 @@ def run_eval_final():
     #             # convert MTL boxes to polygons
     #             # convert Faster R-CNN boxes to polygons
     #             # convert ground truth boxes to polygons
-    #             faster_rcnn_polygon = connect_overlapped_boxes(faster_rcnn_predicted_boxes)
-    #             mtl_polygon = connect_overlapped_boxes(mtl_predicted_boxes)
-    #             ground_truth_polygon = connect_overlapped_boxes(one_ground_truth_boxes)
+    #             faster_rcnn_polygon = convert_boxes_to_polygons(faster_rcnn_predicted_boxes)
+    #             mtl_polygon = convert_boxes_to_polygons(mtl_predicted_boxes)
+    #             ground_truth_polygon = convert_boxes_to_polygons(one_ground_truth_boxes, is_union_boxes=False)
     #
     #             # overlap MTL polygons with Faster R-CNN polygons
-    #             # overlapped_prediction_polygon = faster_rcnn_polygon.intersection(mtl_polygon)
-    #             overlapped_prediction_polygon = faster_rcnn_polygon
+    #             overlapped_prediction_polygon = faster_rcnn_polygon.intersection(mtl_polygon)
+    #             # overlapped_prediction_polygon = faster_rcnn_polygon
     #
     #             # preprocess before counting to prevent error
     #             if ground_truth_polygon is None:
@@ -285,17 +294,21 @@ def run_eval_final():
     #
     # box_counts_df = pd.DataFrame(box_counts)
     # box_counts_df.to_csv(f'{save_base_path}bootstrapped_df.csv', index=False, header=False)
-    #
+
     # ground_truth_min_follicular = 15
     # bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
     # bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
 
 
+
+
+
 if __name__ == "__main__":
     # model_type = 'faster_640'  # 'faster_640_stained_improved'
-    # model_type = 'MTL_auto_reg_aut'
+    model_type = 'MTL_auto_reg_aut'
 
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
     run_eval_final()
+
