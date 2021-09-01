@@ -229,6 +229,88 @@ def bootstrap_box_polygon(image_names, images_by_subject, model_type, img_size, 
     return box_counts_df, bootstrapped_area_df
 
 
+def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, ground_truth_mask_names, images_by_subject, model_type, list_of_ground_truth_polygons,
+                                 mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, bootstrap_repetition_num):
+
+    if os.path.isdir(save_base_path) is False:
+        os.mkdir(save_base_path)
+    print('save_base_path', save_base_path)
+
+    image_name_to_index = {}
+    for i, image_name in enumerate(image_names):
+        image_name_to_index[image_name] = i
+
+    testset_sample_size = len(ground_truth_mask_names)
+    polygon_counts = np.zeros(shape=(bootstrap_repetition_num, 2))
+
+    for bootstrap_repetition_index in tqdm(range(bootstrap_repetition_num)):
+        # ------- bootstrap subjects ------
+        if images_by_subject != None:
+            bootstrap_sampled_subjects = resample(list(images_by_subject.keys()), replace=True, n_samples=len(images_by_subject.keys()),
+                                                 random_state=bootstrap_repetition_index)
+            # only get images from sampled subjects
+            image_names = []
+            for bootstrap_sampled_subject in bootstrap_sampled_subjects:
+                image_names = image_names + images_by_subject[bootstrap_sampled_subject]
+
+        # ------- bootstrap images ---------
+        bootstrap_sampled_image_names = resample(image_names, replace=True, n_samples=testset_sample_size,
+                                             random_state=bootstrap_repetition_index)
+
+        ground_truth_polygons_total = 0
+        prediction_polygons_total = 0
+
+        for idx, filename in enumerate(bootstrap_sampled_image_names):
+            img_path = os.path.join(img_root_path, filename)
+            img = Image.open(img_path)  # load images from paths
+
+            one_ground_truth_polygons = list_of_ground_truth_polygons[image_name_to_index[filename]]
+            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename].copy()
+
+            faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,
+                                                                   0] * img.height, faster_rcnn_predicted_boxes[:,
+                                                                                    2] * img.height  # 1944
+            faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:,
+                                                                   1] * img.width, faster_rcnn_predicted_boxes[:,
+                                                                                   3] * img.width  # 2592
+            mtl_predicted_boxes = mtl_prediction_images_boxes.item()[image_name_to_index[filename]]
+
+            if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
+                # if there is at least one prediction or ground truth box in the image
+
+                # convert MTL boxes to polygons
+                # convert Faster R-CNN boxes to polygons
+                # convert ground truth boxes to polygons
+                faster_rcnn_polygon = convert_boxes_to_polygons(faster_rcnn_predicted_boxes)
+                mtl_polygon = convert_boxes_to_polygons(mtl_predicted_boxes)
+                # ground_truth_polygon = convert_boxes_to_polygons(one_ground_truth_polygons, is_union_boxes=False)
+
+                # overlap MTL polygons with Faster R-CNN polygons
+                if 'MTL_faster-rcnn_overlap' in model_type:
+                    overlapped_prediction_polygon = faster_rcnn_polygon.intersection(mtl_polygon)
+                elif 'faster-rcnn_overlap' in model_type:
+                    overlapped_prediction_polygon = faster_rcnn_polygon
+                elif 'MTL_overlap' in model_type:
+                    overlapped_prediction_polygon = mtl_polygon
+
+                # preprocess before counting to prevent error
+                if one_ground_truth_polygons is None:
+                    one_ground_truth_polygons = []
+                elif one_ground_truth_polygons.geom_type == 'Polygon':
+                    one_ground_truth_polygons = [one_ground_truth_polygons]
+                if overlapped_prediction_polygon is None:
+                    overlapped_prediction_polygon = []
+                elif overlapped_prediction_polygon.geom_type == 'Polygon':
+                    overlapped_prediction_polygon = [overlapped_prediction_polygon]
+
+                ground_truth_polygons_total = ground_truth_polygons_total + len(one_ground_truth_polygons)
+                prediction_polygons_total = prediction_polygons_total + len(overlapped_prediction_polygon)
+                polygon_counts[bootstrap_repetition_index, :] = ground_truth_polygons_total, prediction_polygons_total
+
+    polygon_counts_df = pd.DataFrame(polygon_counts)
+    polygon_counts_df.to_csv(f'{save_base_path}bootstrapped_df.csv', index=False, header=False)
+
+
 def stats_at_threshold(box_counts_df, ground_truth_min_follicular, predicted_min_follicular, DEBUG):
     true_positive = box_counts_df.loc[
         (box_counts_df[0] >= ground_truth_min_follicular) & (box_counts_df[1] >= predicted_min_follicular)]

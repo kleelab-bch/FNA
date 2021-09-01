@@ -2,9 +2,14 @@
 Author Junbong Jang
 Creation Date: 10/28/2020
 
-Count overlaps between ground truth and prediction boxes
+Includes functions for evaluation such as counting overlaps between ground truth and prediction boxes
+Calculating the overlapped area between boxes, polygons and converting boxes or masks to polygons
+Many of these functions are used in conjunction with the visualizer.py
 '''
 import numpy as np
+from shapely.ops import unary_union
+import geopandas as gpd
+from shapely.geometry import Polygon
 
 
 def calculate_polygon_area(ordered_coordinates):
@@ -40,9 +45,6 @@ def calculate_box_area(box):
     return (xmax-xmin) * (ymax-ymin)
 
 
-from shapely.ops import unary_union
-import geopandas as gpd
-from shapely.geometry import Polygon, MultiPolygon
 def convert_boxes_to_polygons(boxes, is_union_boxes=True):
     # connect boxes to form a big polygon
     def convert_box_coordinate_to_polygon(box):
@@ -158,12 +160,13 @@ def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
 
     gt_overlaps = 0
     gt_overlap_pair = []
+    overlap_area_threshold = 0.1
     # For every ground truth box against all prediction polygons
     for i, ground_truth_polygon in enumerate(ground_truth_polygons):
         for j, predicted_polygon in enumerate(predicted_polygons):
             overlapped_area = ground_truth_polygon.intersection(predicted_polygon).area
             # If overlapped area is greater than 50% of ground truth or prediction polygon
-            if overlapped_area > ground_truth_polygon.area * 0.5 or overlapped_area > predicted_polygon.area * 0.5:
+            if overlapped_area > ground_truth_polygon.area * overlap_area_threshold or overlapped_area > predicted_polygon.area * overlap_area_threshold:
                 # For one prediction, count all ground truth inside it
                 # For one ground truth, count only once for prediction polygons inside it
                 gt_overlaps = gt_overlaps + 1
@@ -177,7 +180,7 @@ def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
         false_positive_flag = True
         for j, ground_truth_polygon in enumerate(ground_truth_polygons):
             overlapped_area = ground_truth_polygon.intersection(predicted_polygon).area
-            if overlapped_area > ground_truth_polygon.area * 0.5 or overlapped_area > predicted_polygon.area * 0.5:
+            if overlapped_area > ground_truth_polygon.area * overlap_area_threshold or overlapped_area > predicted_polygon.area * overlap_area_threshold:
                 false_positive_flag = False
                 not_fp_pair.append((i,j))
                 break
