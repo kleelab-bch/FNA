@@ -13,7 +13,7 @@ from PIL import Image
 from calc_polygon import convert_boxes_to_polygons, count_overlap_polygons
 from visualizer import Visualizer
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
-from bootstrapping import bootstrap_analysis, bootstrap_data, bootstrap_two_model_polygons
+from bootstrapping import bootstrap_analysis, bootstrap_analysis_compare_precision_recall, bootstrap_data, bootstrap_two_model_polygons
 
 
 def convert_mask_to_box(ground_truth_mask_root_path):
@@ -146,7 +146,8 @@ def run_eval_final():
     ground_truth_mask_names.sort()
 
     # -------------------- Polygon Visualization -----------------------------
-    # model_type = 'MTL_overlap'
+    # model_type options: 'faster-rcnn_overlap', 'MTL_overlap', 'MTL_faster-rcnn_overlap'
+    # model_type = 'MTL_faster-rcnn_overlap'
     # save_base_path = f"{load_path}/{model_type}_polygon/"
     # visualizer = Visualizer()
     # visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
@@ -154,15 +155,32 @@ def run_eval_final():
     #                                                              faster_rcnn_prediction_images_boxes, model_type)
     # -----------------------------------------------------
     # Bootstrap number of overlapped polygons per image
-    model_type = 'bootstrapped_MTL_overlap'
-    save_base_path = f"{load_path}/{model_type}_polygon/"
+    # model_type = 'bootstrapped_MTL_faster-rcnn_overlap'
+    # save_base_path = f"{load_path}/{model_type}_polygon/"
 
-    bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, model_type,
-                                 list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
+    # bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, model_type,
+    #                              list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
+
+    # ground_truth_min_follicular = 15
+    # bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
+    # bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+
+    # ---------- For plotting Precision Recall curve for 3 models -----------
+    save_base_path1 = f"{load_path}/bootstrapped_MTL_overlap_polygon/"
+    save_base_path2 = f"{load_path}/bootstrapped_faster-rcnn_overlap_polygon/"
+    save_base_path3 = f"{load_path}/bootstrapped_MTL_faster-rcnn_overlap_polygon/"
+    save_base_path = f"{load_path}/bootstrapped_compare_precision_recall_polygon/"
+    if os.path.isdir(save_base_path) is False:
+        os.mkdir(save_base_path)
+
+    bootstrapped_df1 = pd.read_csv(f'{save_base_path1}bootstrapped_df.csv', header=None)
+    bootstrapped_df2 = pd.read_csv(f'{save_base_path2}bootstrapped_df.csv', header=None)
+    bootstrapped_df3 = pd.read_csv(f'{save_base_path3}bootstrapped_df.csv', header=None)
 
     ground_truth_min_follicular = 15
-    bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
-    bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+
+    bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3,
+                                                ground_truth_min_follicular, save_base_path)
 
 
 if __name__ == "__main__":

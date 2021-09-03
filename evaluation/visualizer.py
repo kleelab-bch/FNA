@@ -375,84 +375,84 @@ class Visualizer:
         return overlaid_img
 
 
-def overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, mask_names, list_of_ground_truth_polygons,
-                                                      mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type):
-    if os.path.isdir(save_base_path) is False:
-        os.mkdir(save_base_path)
-    print('save_base_path', save_base_path)
+    def overlay_two_model_overlapped_polygons_over_images(self, save_base_path, img_root_path, mask_names, list_of_ground_truth_polygons,
+                                                          mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type):
+        if os.path.isdir(save_base_path) is False:
+            os.mkdir(save_base_path)
+        print('save_base_path', save_base_path)
 
-    total_false_negative = 0
-    total_false_positive = 0
-    total_gt_overlaps = 0
+        total_false_negative = 0
+        total_false_positive = 0
+        total_gt_overlaps = 0
 
-    for idx, filename in enumerate(mask_names):
-        img_path = os.path.join(img_root_path, filename)
-        img = Image.open(img_path)  # load images from paths
+        for idx, filename in enumerate(mask_names):
+            img_path = os.path.join(img_root_path, filename)
+            img = Image.open(img_path)  # load images from paths
 
-        one_ground_truth_polygons = list_of_ground_truth_polygons[idx]
+            one_ground_truth_polygons = list_of_ground_truth_polygons[idx]
 
-        # one_ground_truth_polygons = ground_truth_boxes.item()[orig_filename]
-        faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename]
+            # one_ground_truth_polygons = ground_truth_boxes.item()[orig_filename]
+            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename]
 
-        faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,0] *img.height, faster_rcnn_predicted_boxes[:,2] *img.height  # 1944
-        faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:,1] *img.width, faster_rcnn_predicted_boxes[:,3] *img.width  # 2592
+            faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,0] *img.height, faster_rcnn_predicted_boxes[:,2] *img.height  # 1944
+            faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:,1] *img.width, faster_rcnn_predicted_boxes[:,3] *img.width  # 2592
 
-        mtl_predicted_boxes = mtl_prediction_images_boxes.item()[idx]
+            mtl_predicted_boxes = mtl_prediction_images_boxes.item()[idx]
 
-        if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
-            # if there is at least one prediction or ground truth box in the image
+            if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
+                # if there is at least one prediction or ground truth box in the image
 
-            # convert MTL boxes to polygons
-            # convert Faster R-CNN boxes to polygons
-            # convert ground truth boxes to polygons
-            faster_rcnn_polygon = convert_boxes_to_polygons(faster_rcnn_predicted_boxes)
-            mtl_polygon = convert_boxes_to_polygons(mtl_predicted_boxes)
+                # convert MTL boxes to polygons
+                # convert Faster R-CNN boxes to polygons
+                # convert ground truth boxes to polygons
+                faster_rcnn_polygon = convert_boxes_to_polygons(faster_rcnn_predicted_boxes)
+                mtl_polygon = convert_boxes_to_polygons(mtl_predicted_boxes)
 
-            # overlap MTL polygons with Faster R-CNN polygons
-            if 'MTL_faster-rcnn_overlap' in model_type:
-                overlapped_prediction_polygon = faster_rcnn_polygon.intersection(mtl_polygon)
-            elif 'faster-rcnn_overlap' in model_type:
-                overlapped_prediction_polygon = faster_rcnn_polygon
-            elif 'MTL_overlap' in model_type:
-                overlapped_prediction_polygon = mtl_polygon
-            else:
-                raise ValueError('model type incorrect')
-            # overlap MTL + Faster R-CNN polygon with ground truth polygon
-            overlapped_final_polygon = overlapped_prediction_polygon.intersection(one_ground_truth_polygons)
-            # Count overlapped polygons
-            gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons,
-                                                                                                  overlapped_prediction_polygon)
-            if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
-                print(idx, filename)
-                print(gt_overlaps, false_negative, false_positive)
-            total_gt_overlaps = total_gt_overlaps + gt_overlaps
-            total_false_negative = total_false_negative + false_negative
-            total_false_positive = total_false_positive + false_positive
+                # overlap MTL polygons with Faster R-CNN polygons
+                if 'MTL_faster-rcnn_overlap' in model_type:
+                    overlapped_prediction_polygon = faster_rcnn_polygon.intersection(mtl_polygon)
+                elif 'faster-rcnn_overlap' in model_type:
+                    overlapped_prediction_polygon = faster_rcnn_polygon
+                elif 'MTL_overlap' in model_type:
+                    overlapped_prediction_polygon = mtl_polygon
+                else:
+                    raise ValueError('model type incorrect')
+                # overlap MTL + Faster R-CNN polygon with ground truth polygon
+                overlapped_final_polygon = overlapped_prediction_polygon.intersection(one_ground_truth_polygons)
+                # Count overlapped polygons
+                gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons,
+                                                                                                      overlapped_prediction_polygon)
+                if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
+                    print(idx, filename)
+                    print(gt_overlaps, false_negative, false_positive)
+                total_gt_overlaps = total_gt_overlaps + gt_overlaps
+                total_false_negative = total_false_negative + false_negative
+                total_false_positive = total_false_positive + false_positive
 
-            # overlay polygon over the image
-            overlaid_img = overlay_polygons(img, one_ground_truth_polygons, (255, 0, 0), True)
-            overlaid_img = overlay_polygons(overlaid_img, overlapped_prediction_polygon, (0, 255, 0), True)
-            overlaid_img = overlay_polygons(overlaid_img, overlapped_final_polygon, (255, 255, 0), True)
-            save_filename = save_base_path + filename
-            overlaid_img.save(save_filename)
+                # overlay polygon over the image
+                overlaid_img = self.overlay_polygons(img, one_ground_truth_polygons, (255, 0, 0), True)
+                overlaid_img = self.overlay_polygons(overlaid_img, overlapped_prediction_polygon, (0, 255, 0), True)
+                overlaid_img = self.overlay_polygons(overlaid_img, overlapped_final_polygon, (255, 255, 0), True)
+                save_filename = save_base_path + filename
+                overlaid_img.save(save_filename)
 
-    if model_type == 'faster-rcnn_overlap':
-        assert total_gt_overlaps == 16
-        assert total_false_positive == 6
-        assert total_false_negative == 21
-    elif model_type == 'MTL_faster-rcnn_overlap':
-        assert total_gt_overlaps == 16
-        assert total_false_positive == 3
-        assert total_false_negative == 21
+        if model_type == 'faster-rcnn_overlap':
+            assert total_gt_overlaps == 16
+            assert total_false_positive == 6
+            assert total_false_negative == 21
+        elif model_type == 'MTL_faster-rcnn_overlap':
+            assert total_gt_overlaps == 16
+            assert total_false_positive == 3
+            assert total_false_negative == 21
 
-        # evaluate by F1, Precision and Recall
-    print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
-    precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
-    recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
-    f1 = 2 * precision * recall / (precision + recall)
-    print('precision:', round(precision, 3))
-    print('recall:', round(recall, 3))
-    print('f1:', round(f1, 3))
+            # evaluate by F1, Precision and Recall
+        print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
+        precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
+        recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
+        f1 = 2 * precision * recall / (precision + recall)
+        print('precision:', round(precision, 3))
+        print('recall:', round(recall, 3))
+        print('f1:', round(f1, 3))
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, model_type):

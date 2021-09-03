@@ -58,13 +58,34 @@ def bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_folli
     # plot_precision_recall_curve(y_true, y_pred)
 
     # -------- Varying Predicted Min Follicular Thresholds ------------
+    predicted_min_follicular_list, precision_list, recall_list, f1_list = get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicular)
+
+    bootstrap_viz.plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, save_base_path)
+    bootstrap_viz.plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list,
+                                   save_base_path)
+
+
+def bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3, ground_truth_min_follicular, save_base_path):
+    _, precision_list1, recall_list1, _ = get_precision_recall_at_thresholds(bootstrapped_df1, ground_truth_min_follicular)
+    _, precision_list2, recall_list2, _ = get_precision_recall_at_thresholds(bootstrapped_df2, ground_truth_min_follicular)
+    _, precision_list3, recall_list3, _ = get_precision_recall_at_thresholds(bootstrapped_df3, ground_truth_min_follicular)
+
+    y_true = bootstrapped_df1[0] >= ground_truth_min_follicular
+
+    bootstrap_viz.plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1,
+                                                            precision_list2, recall_list2,
+                                                            precision_list3, recall_list3,
+                                                            save_base_path)
+
+
+def get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicular):
     precision_list = []
     recall_list = []
     f1_list = []
     predicted_min_follicular_list = []
     for_step = 1
     if len(str(ground_truth_min_follicular)) > 2:
-        for_step = 10**(len(str(int(ground_truth_min_follicular)))-2)
+        for_step = 10 ** (len(str(int(ground_truth_min_follicular))) - 2)
     print('for_step', for_step)
     for predicted_min_follicular in range(0, ground_truth_min_follicular * 2, for_step):
         a_precision, a_recall, a_f1 = stats_at_threshold(bootstrapped_df, ground_truth_min_follicular,
@@ -74,9 +95,7 @@ def bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_folli
         recall_list.append(a_recall)
         f1_list.append(a_f1)
 
-    bootstrap_viz.plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, save_base_path)
-    bootstrap_viz.plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list,
-                                   save_base_path)
+    return predicted_min_follicular_list, precision_list, recall_list, f1_list
 
 
 def bootstrap_box_counts_area(image_names, images_by_subject, model_type, img_size, np_ground_truth_boxes, np_prediction_boxes, bootstrap_repetition_num):

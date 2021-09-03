@@ -174,6 +174,45 @@ def plot_precision_recall_curve(y_true, y_pred, save_base_path):
 
 
 def plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, save_base_path):
+    no_skill = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, 'Follicular Cluster Detection')
+
+    plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
+    plt.xlabel('Recall', fontsize='large')
+    plt.ylabel('Precision', fontsize='large')
+
+    plt.xlim(left=0, right=1.02)
+    plt.ylim(bottom= math.floor(no_skill*100)/100)
+    plt.legend()
+    plt.grid()
+    plt.savefig(save_base_path + 'precision_recall_curve_at_thresholds.png')
+    plt.close()
+
+
+def plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1,
+                                                         precision_list2, recall_list2,
+                                                         precision_list3, recall_list3, save_base_path):
+    no_skill, no_skill_auc = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1, 'MTL only')
+    no_skill2, _ = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list2, recall_list2, 'Faster R-CNN only')
+    no_skill3, _ = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list3, recall_list3, 'FNA-Net')
+
+    assert no_skill == no_skill2
+    assert no_skill == no_skill3
+
+    plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label=f'No Skill AUC={round(no_skill_auc, 3)}', lw=2)
+
+    plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
+    plt.xlabel('Recall', fontsize='large')
+    plt.ylabel('Precision', fontsize='large')
+
+    plt.xlim(left=0, right=1.02)
+    plt.ylim(bottom= math.floor(no_skill*100)/100)
+    plt.legend(loc="lower left", bbox_to_anchor=(0, 0.05))
+    plt.grid()
+    plt.savefig(save_base_path + 'precision_recall_curve_at_thresholds.png')
+    plt.close()
+
+
+def helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, label_string):
     no_skill = len(y_true[y_true == 1]) / len(y_true)
     # include both endpoints
     precision_list = precision_list + [1,no_skill]
@@ -187,20 +226,10 @@ def plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_lis
     no_skill_auc = auc([0, 1], [no_skill, no_skill])
     lr_auc = auc(recall_list, precision_list)
 
-    plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label=f'No Skill AUC={round(no_skill_auc, 3)}', lw=2)
     plt.plot(recall_list, precision_list, marker='.',
-             label=f'Follicular Cluster Detection\nAUC={round(lr_auc, 3)}', lw=2)
+             label=f'{label_string}\nAUC={round(lr_auc, 3)}', lw=2)
 
-    plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
-    plt.xlabel('Recall', fontsize='large')
-    plt.ylabel('Precision', fontsize='large')
-
-    plt.xlim(left=0, right=1.02)
-    plt.ylim(bottom= math.floor(no_skill*100)/100)
-    plt.legend()
-    plt.grid()
-    plt.savefig(save_base_path + 'precision_recall_curve_at_thresholds.png')
-    plt.close()
+    return no_skill, no_skill_auc
 
 
 def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list, save_base_path):
