@@ -107,8 +107,8 @@ def plot_scatter(box_counts_df, ground_truth_min_follicular, save_base_path):
     plt.xlabel('Ground Truth Number of Follicular Clusters', fontsize='large')
     plt.ylabel('Predicted Number of Follicular Clusters', fontsize='large')
 
-    # plt.xlim(left=0, right=120) # right=1000
-    # plt.ylim(bottom=0, top=120)  # top=1000
+    plt.xlim(left=0, right=150) # right=1000
+    plt.ylim(bottom=0, top=150)  # top=1000
     plt.grid(True)
     plt.savefig(save_base_path + 'data_scatter.png')
     plt.close()
@@ -174,7 +174,7 @@ def plot_precision_recall_curve(y_true, y_pred, save_base_path):
 
 
 def plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, save_base_path):
-    no_skill = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, 'Follicular Cluster Detection')
+    no_skill, no_skill_auc = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, 'Follicular Cluster Detection')
 
     plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
     plt.xlabel('Recall', fontsize='large')

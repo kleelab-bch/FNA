@@ -160,7 +160,7 @@ def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
 
     gt_overlaps = 0
     gt_overlap_pair = []
-    overlap_area_threshold = 0.1
+    overlap_area_threshold = 0.1  # 0.5 origianlly but 0.1 is to count the predicted small box inside ground truth for final_eval
     # For every ground truth box against all prediction polygons
     for i, ground_truth_polygon in enumerate(ground_truth_polygons):
         for j, predicted_polygon in enumerate(predicted_polygons):
