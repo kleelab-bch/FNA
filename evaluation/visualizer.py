@@ -30,6 +30,7 @@ import rasterio
 from rasterio import features
 import shapely
 from shapely.geometry import Point, Polygon
+from shapely.geometry.multipolygon import MultiPolygon
 
 class Visualizer:
     def __init__(self):
@@ -419,6 +420,17 @@ class Visualizer:
                     raise ValueError('model type incorrect')
                 # overlap MTL + Faster R-CNN polygon with ground truth polygon
                 overlapped_final_polygon = overlapped_prediction_polygon.intersection(one_ground_truth_polygons)
+
+                # this is necessary because MTL prediction intersectoin with ground truth produces geometry Collection, instead of multipolygon
+                if "GeometryCollection" == type(overlapped_final_polygon).__name__:
+                    polygon_list = []
+                    for line_or_polygon in overlapped_final_polygon.geoms:
+                        # find polygons
+                        if 'Polygon' == type(line_or_polygon).__name__:
+                            polygon_list.append(line_or_polygon)
+
+                    overlapped_final_polygon = MultiPolygon(polygon_list)  # convert to multipolygon
+
                 # Count overlapped polygons
                 gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons,
                                                                                                       overlapped_prediction_polygon)

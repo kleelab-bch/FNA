@@ -145,42 +145,44 @@ def run_eval_final():
     ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
     ground_truth_mask_names.sort()
 
+    # --------------------- Data Loading and preparation above ---------------------------------------
+
     # model_type options: 'faster-rcnn_overlap', 'MTL_overlap', 'MTL_faster-rcnn_overlap'
     # -------------------- Polygon Visualization -----------------------------
-    model_type = 'MTL_faster-rcnn_overlap'
-    save_base_path = f"{load_path}/{model_type}_polygon/"
+    # model_type = 'MTL_overlap' # 'MTL_faster-rcnn_overlap'
+    # save_base_path = f"{load_path}/{model_type}_polygon/"
     # visualizer = Visualizer()
     # visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
     #                                                              list_of_ground_truth_polygons, mtl_prediction_images_boxes,
     #                                                              faster_rcnn_prediction_images_boxes, model_type)
 
     # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
-    model_type = 'bootstrapped_MTL_faster-rcnn_overlap'
-    save_base_path = f"{load_path}/{model_type}_polygon/"
-
-    # bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, model_type,
-    #                              list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
-
-    ground_truth_min_follicular = 15
-    bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
-    bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
-
-    # ---------- For plotting Precision Recall curve for 3 models -----------
-    # save_base_path1 = f"{load_path}/bootstrapped_MTL_overlap_polygon/"
-    # save_base_path2 = f"{load_path}/bootstrapped_faster-rcnn_overlap_polygon/"
-    # save_base_path3 = f"{load_path}/bootstrapped_MTL_faster-rcnn_overlap_polygon/"
-    # save_base_path = f"{load_path}/bootstrapped_compare_precision_recall_polygon/"
-    # if os.path.isdir(save_base_path) is False:
-    #     os.mkdir(save_base_path)
+    # model_type = 'bootstrapped_MTL_faster-rcnn_overlap'
+    # save_base_path = f"{load_path}/{model_type}_polygon/"
     #
-    # bootstrapped_df1 = pd.read_csv(f'{save_base_path1}bootstrapped_df.csv', header=None)
-    # bootstrapped_df2 = pd.read_csv(f'{save_base_path2}bootstrapped_df.csv', header=None)
-    # bootstrapped_df3 = pd.read_csv(f'{save_base_path3}bootstrapped_df.csv', header=None)
+    # # bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, model_type,
+    # #                              list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
     #
-    # ground_truth_min_follicular = 15
-    #
-    # bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3,
-    #                                             ground_truth_min_follicular, save_base_path)
+    # ground_truth_min_follicular = 6
+    # bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
+    # bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+
+    # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
+    save_base_path1 = f"{load_path}/bootstrapped_MTL_overlap_polygon/"
+    save_base_path2 = f"{load_path}/bootstrapped_faster-rcnn_overlap_polygon/"
+    save_base_path3 = f"{load_path}/bootstrapped_MTL_faster-rcnn_overlap_polygon/"
+    save_base_path = f"{load_path}/bootstrapped_compare_precision_recall_polygon/"
+    if os.path.isdir(save_base_path) is False:
+        os.mkdir(save_base_path)
+
+    bootstrapped_df1 = pd.read_csv(f'{save_base_path1}bootstrapped_df.csv', header=None)
+    bootstrapped_df2 = pd.read_csv(f'{save_base_path2}bootstrapped_df.csv', header=None)
+    bootstrapped_df3 = pd.read_csv(f'{save_base_path3}bootstrapped_df.csv', header=None)
+
+    ground_truth_min_follicular = 6
+
+    bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3,
+                                                ground_truth_min_follicular, save_base_path)
 
 
 if __name__ == "__main__":

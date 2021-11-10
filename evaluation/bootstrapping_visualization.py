@@ -6,11 +6,19 @@ Helper functions to visualize bootstrapping results
 '''
 
 import numpy as np
+import matplotlib
+matplotlib.use('agg')
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import roc_auc_score, auc, roc_curve, precision_recall_curve, f1_score
 import math
 
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Arial']
+
+font = {'size':'11', 'weight':'normal',}
+matplotlib.rc('font', **font)
 
 def distribution_mean_and_error(box_counts_series, sample_size):
     mean = box_counts_series.mean()
@@ -48,7 +56,7 @@ def plot_histogram(box_counts_df, test_image_names, save_base_path):
             verticalalignment='center',
             transform=ax.transAxes)
 
-    plt.title('Distribution of Samples of Follicular Clusters', fontsize='x-large')
+    # plt.title('Distribution of Samples of Follicular Clusters', fontsize='x-large')
     plt.xlabel('Number of Follicular Clusters', fontsize='large')
     plt.ylabel(f'Frequency', fontsize='large')
     plt.legend(loc='upper right')
@@ -75,7 +83,9 @@ def plot_histogram(box_counts_df, test_image_names, save_base_path):
     # fig.tight_layout()
     # fig.subplots_adjust(top=0.88)
 
-    plt.savefig(save_base_path + 'data_histogram.png')
+    plt.xlim( right=200)
+    figure_postprocess(False)
+    plt.savefig(save_base_path + 'data_histogram.svg')
     plt.close()
 
 
@@ -103,14 +113,14 @@ def plot_scatter(box_counts_df, ground_truth_min_follicular, save_base_path):
             transform=ax.transAxes)
 
 
-    plt.title('Ground Truth Vs. Predicted', fontsize='x-large')
+    # plt.title('Ground Truth Vs. Predicted', fontsize='x-large')
     plt.xlabel('Ground Truth Number of Follicular Clusters', fontsize='large')
     plt.ylabel('Predicted Number of Follicular Clusters', fontsize='large')
 
     plt.xlim(left=0, right=150) # right=1000
     plt.ylim(bottom=0, top=150)  # top=1000
-    plt.grid(True)
-    plt.savefig(save_base_path + 'data_scatter.png')
+    figure_postprocess()
+    plt.savefig(save_base_path + f'data_scatter_threshold_{ground_truth_min_follicular}.svg')
     plt.close()
 
 
@@ -140,15 +150,15 @@ def plot_roc_curve(y_true, y_pred, save_base_path):
     plt.plot(ns_fpr, ns_tpr, linestyle='--', label='No Skill')
     plt.plot(lr_fpr, lr_tpr, marker='.', label=f'Follicular Cluster Detection\nROC AUC=%.3f' % (lr_auc))
 
-    plt.title('Slide Pass/Fail ROC curve')
+    # plt.title('Slide Pass/Fail ROC curve')
     plt.xlabel('False Positive Rate', fontsize='large')
     plt.ylabel('True Positive Rate', fontsize='large')
 
     plt.xlim(left=0)
     plt.ylim(bottom=0)
     plt.legend()
-    plt.grid()
-    plt.savefig(save_base_path + 'roc_curve.png')
+    figure_postprocess()
+    plt.savefig(save_base_path + 'roc_curve.svg')
     plt.close()
 
 
@@ -161,36 +171,36 @@ def plot_precision_recall_curve(y_true, y_pred, save_base_path):
     plt.plot(lr_recall, lr_precision, marker='.',
              label=f'Follicular Cluster Detection\nf1={round(lr_f1,3)} auc={round(lr_auc,3)}')
 
-    plt.title('Slide Pass/Fail Precision-Recall curve')
+    # plt.title('Slide Pass/Fail Precision-Recall curve')
     plt.xlabel('Recall', fontsize='large')
     plt.ylabel('Precision', fontsize='large')
 
     plt.xlim(left=0)
     plt.ylim(bottom=no_skill)
     plt.legend()
-    plt.grid()
-    plt.savefig(save_base_path + 'precision_recall_curve.png')
+    figure_postprocess()
+    plt.savefig(save_base_path + 'precision_recall_curve.svg')
     plt.close()
 
 
-def plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, save_base_path):
+def plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, ground_truth_min_follicular, save_base_path):
     no_skill, no_skill_auc = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_list, 'Follicular Cluster Detection')
 
-    plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
+    # plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
     plt.xlabel('Recall', fontsize='large')
     plt.ylabel('Precision', fontsize='large')
 
     plt.xlim(left=0, right=1.02)
     plt.ylim(bottom= math.floor(no_skill*100)/100)
     plt.legend()
-    plt.grid()
-    plt.savefig(save_base_path + 'precision_recall_curve_at_thresholds.png')
+    figure_postprocess()
+    plt.savefig(save_base_path + f'precision_recall_curve_at_thresholds_threshold_{ground_truth_min_follicular}.svg')
     plt.close()
 
 
 def plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1,
                                                          precision_list2, recall_list2,
-                                                         precision_list3, recall_list3, save_base_path):
+                                                         precision_list3, recall_list3, ground_truth_min_follicular, save_base_path):
     no_skill, no_skill_auc = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1, 'MTL only')
     no_skill2, _ = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list2, recall_list2, 'Faster R-CNN only')
     no_skill3, _ = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list3, recall_list3, 'FNA-Net')
@@ -200,15 +210,15 @@ def plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1
 
     plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label=f'No Skill AUC={round(no_skill_auc, 3)}', lw=2)
 
-    plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
+    # plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
     plt.xlabel('Recall', fontsize='large')
     plt.ylabel('Precision', fontsize='large')
 
     plt.xlim(left=0, right=1.02)
     plt.ylim(bottom= math.floor(no_skill*100)/100)
     plt.legend(loc="lower left", bbox_to_anchor=(0, 0.05))
-    plt.grid()
-    plt.savefig(save_base_path + 'precision_recall_curve_at_thresholds.png')
+    figure_postprocess()
+    plt.savefig(save_base_path + f'precision_recall_curve_at_thresholds_threshold_{ground_truth_min_follicular}.svg')
     plt.close()
 
 
@@ -232,7 +242,7 @@ def helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list, rec
     return no_skill, no_skill_auc
 
 
-def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list, save_base_path):
+def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list, ground_truth_min_follicular, save_base_path):
     assert len(predicted_min_follicular_list) == len(precision_list)
     assert len(predicted_min_follicular_list) == len(recall_list)
     assert len(predicted_min_follicular_list) == len(f1_list)
@@ -241,13 +251,18 @@ def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list
     plt.plot(predicted_min_follicular_list, recall_list, marker='.', label='Recall', lw=2)
     plt.plot(predicted_min_follicular_list, f1_list, marker='.', label='F1', lw=2)
 
-    plt.title('Performance at different Thresholds', fontsize='x-large')
+    # plt.title('Performance at different Thresholds', fontsize='x-large')
     plt.xlabel('Minimum Predicted Follicular Clusters to Pass', fontsize='large')
     plt.ylabel('Performance', fontsize='large')
 
     # plt.ylim(bottom=0.8, top=1)
     # plt.xlim(left=0, right=len(predicted_min_follicular_list))
     plt.legend()
-    plt.grid()
-    plt.savefig(save_base_path + 'performance_at_thresholds.png')
+    figure_postprocess()
+    plt.savefig(save_base_path + f'performance_at_thresholds_threshold_{ground_truth_min_follicular}.svg')
     plt.close()
+
+def figure_postprocess(use_grid=True):
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.grid(use_grid)
