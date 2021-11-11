@@ -7,6 +7,7 @@ This repository includes code for running our Slide Scanner and FNA-Net deep lea
 * Python v3.8.10
 
 # Installation
+* install Python and Python packages as listed in requirements.txt
 ### How to import rasterio (instructions for Windows 10)
 * Go to https://www.lfd.uci.edu/~gohlke/pythonlibs/
 * Download 
