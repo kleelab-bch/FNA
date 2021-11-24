@@ -191,5 +191,7 @@ if __name__ == "__main__":
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    run_eval_final()
+    #run_eval_final()
+
+    Visualizer().manuscript_draw_comparison_bar_graph()
 

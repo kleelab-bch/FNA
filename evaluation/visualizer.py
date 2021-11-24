@@ -22,6 +22,7 @@ import PIL.ImageDraw as ImageDraw
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
+import matplotlib
 from matplotlib import pyplot as plt
 from scipy import ndimage
 from calc_polygon import *
@@ -31,6 +32,13 @@ from rasterio import features
 import shapely
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
+
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Arial']
+
+font = {'size':'11', 'weight':'normal',}
+matplotlib.rc('font', **font)
 
 class Visualizer:
     def __init__(self):
@@ -540,5 +548,24 @@ class Visualizer:
         alpha = 0.6
         heatmap_img = cv2.addWeighted(image, alpha, heatmap, 1 - alpha, 0)
         cv2.imwrite(f'{save_path}heatmap_{image_name}', heatmap_img)
+
+
+    def manuscript_draw_comparison_bar_graph(self):
+        # draw bar graphs for manuscript
+        # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
+
+        import seaborn as sns
+        import pandas as pd
+        sns.set_theme(style="whitegrid")
+        list_of_list = [[0.44, 0.73, 0.551, 0.727, 0.432, 0.542, 0.842, 0.432, 0.571],
+                ['Precision', 'Recall', 'F1', 'Precision', 'Recall', 'F1', 'Precision', 'Recall', 'F1'],
+                ['MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both']]
+
+        # transpose list of list
+        transposed_list_of_list = np.array(list_of_list).T.tolist()
+        df = pd.DataFrame(transposed_list_of_list, columns=['val', 'metric', 'model'])
+        df["val"] = pd.to_numeric(df["val"])
+        ax = sns.barplot(x="metric", y="val", hue="model", data=df)
+        plt.savefig("mygraph.png")
 
 
