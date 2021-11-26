@@ -393,7 +393,8 @@ class Visualizer:
         total_false_negative = 0
         total_false_positive = 0
         total_gt_overlaps = 0
-
+        total_iou = 0
+        iou_counter = 0
         for idx, filename in enumerate(mask_names):
             img_path = os.path.join(img_root_path, filename)
             img = Image.open(img_path)  # load images from paths
@@ -429,7 +430,7 @@ class Visualizer:
                 # overlap MTL + Faster R-CNN polygon with ground truth polygon
                 overlapped_final_polygon = overlapped_prediction_polygon.intersection(one_ground_truth_polygons)
 
-                # this is necessary because MTL prediction intersectoin with ground truth produces geometry Collection, instead of multipolygon
+                # necessary because MTL prediction intersection with ground truth produces geometry Collection, instead of multipolygon
                 if "GeometryCollection" == type(overlapped_final_polygon).__name__:
                     polygon_list = []
                     for line_or_polygon in overlapped_final_polygon.geoms:
@@ -439,7 +440,14 @@ class Visualizer:
 
                     overlapped_final_polygon = MultiPolygon(polygon_list)  # convert to multipolygon
 
-                # Count overlapped polygons
+                # ------------------ IOU ---------------------
+                if mtl_predicted_boxes.shape[0] > 0 and faster_rcnn_predicted_boxes.shape[0] > 0:
+                    iou = calc_iou(one_ground_truth_polygons, overlapped_prediction_polygon)
+                    total_iou = total_iou + iou
+                    iou_counter = iou_counter + 1
+                    print(iou)
+
+                # ---------------- Count overlapped polygons --------------------
                 gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons,
                                                                                                       overlapped_prediction_polygon)
                 if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
@@ -449,7 +457,7 @@ class Visualizer:
                 total_false_negative = total_false_negative + false_negative
                 total_false_positive = total_false_positive + false_positive
 
-                # overlay polygon over the image
+                # ------------------ overlay polygon over the image ----------------
                 overlaid_img = self.overlay_polygons(img, one_ground_truth_polygons, (255, 0, 0), True)
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_prediction_polygon, (0, 255, 0), True)
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_final_polygon, (255, 255, 0), True)
@@ -473,6 +481,7 @@ class Visualizer:
         print('precision:', round(precision, 3))
         print('recall:', round(recall, 3))
         print('f1:', round(f1, 3))
+        print('total_iou:', round(total_iou/iou_counter,3))
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, model_type):
@@ -551,21 +560,21 @@ class Visualizer:
 
 
     def manuscript_draw_comparison_bar_graph(self):
-        # draw bar graphs for manuscript
         # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
 
         import seaborn as sns
         import pandas as pd
         sns.set_theme(style="whitegrid")
-        list_of_list = [[0.44, 0.73, 0.551, 0.727, 0.432, 0.542, 0.842, 0.432, 0.571],
-                ['Precision', 'Recall', 'F1', 'Precision', 'Recall', 'F1', 'Precision', 'Recall', 'F1'],
-                ['MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both']]
+        list_of_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
+                ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
+                ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
 
         # transpose list of list
         transposed_list_of_list = np.array(list_of_list).T.tolist()
         df = pd.DataFrame(transposed_list_of_list, columns=['val', 'metric', 'model'])
         df["val"] = pd.to_numeric(df["val"])
-        ax = sns.barplot(x="metric", y="val", hue="model", data=df)
-        plt.savefig("../generated/manuscript/bar_graph_comparison.png")
+        sns.barplot(x="metric", y="val", hue="model", data=df)
+
+        plt.savefig("../generated/manuscript/bar_graph_comparison.svg")
 
 

@@ -147,6 +147,16 @@ def count_overlap_box(ground_truth_boxes, predicted_boxes):
     return gt_overlaps, false_negative, false_positive, gt_overlap_pair
 
 
+def calc_iou(ground_truth_polygons, predicted_polygons):
+    gt_union = unary_union(ground_truth_polygons)
+    predicted_union = unary_union(predicted_polygons)
+    a_intersection = gt_union.intersection(predicted_union).area
+    a_union = gt_union.union(predicted_union).area
+
+    iou = a_intersection / a_union
+
+    return iou
+
 
 def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
     if ground_truth_polygons.geom_type == 'Polygon':
@@ -160,11 +170,13 @@ def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
 
     gt_overlaps = 0
     gt_overlap_pair = []
+    total_overlapped_area = 0
     overlap_area_threshold = 0.1  # 0.5 origianlly but 0.1 is to count the predicted small box inside ground truth for final_eval
     # For every ground truth box against all prediction polygons
     for i, ground_truth_polygon in enumerate(ground_truth_polygons):
         for j, predicted_polygon in enumerate(predicted_polygons):
             overlapped_area = ground_truth_polygon.intersection(predicted_polygon).area
+            total_overlapped_area = total_overlapped_area + overlapped_area
             # If overlapped area is greater than 50% of ground truth or prediction polygon
             if overlapped_area > ground_truth_polygon.area * overlap_area_threshold or overlapped_area > predicted_polygon.area * overlap_area_threshold:
                 # For one prediction, count all ground truth inside it
@@ -173,8 +185,8 @@ def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
                 gt_overlap_pair.append((i,j))
                 break
 
-    not_fp_pair = []
     # to count false_positive
+    not_fp_pair = []
     false_positive = 0
     for i, predicted_polygon in enumerate(predicted_polygons):
         false_positive_flag = True
