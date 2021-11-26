@@ -566,6 +566,6 @@ class Visualizer:
         df = pd.DataFrame(transposed_list_of_list, columns=['val', 'metric', 'model'])
         df["val"] = pd.to_numeric(df["val"])
         ax = sns.barplot(x="metric", y="val", hue="model", data=df)
-        plt.savefig("mygraph.png")
+        plt.savefig("../generated/manuscript/bar_graph_comparison.png")
 
 
