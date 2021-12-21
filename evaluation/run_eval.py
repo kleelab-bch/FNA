@@ -9,7 +9,6 @@ import numpy as np
 from tqdm import tqdm
 import pandas as pd
 from PIL import Image
-
 from visualizer import Visualizer
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
 from bootstrapping import bootstrap_analysis, bootstrap_analysis_compare_precision_recall, bootstrap_data, bootstrap_two_model_polygons
