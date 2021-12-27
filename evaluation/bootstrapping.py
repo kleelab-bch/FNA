@@ -52,10 +52,13 @@ def bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_folli
     bootstrap_viz.plot_scatter(bootstrapped_df, ground_truth_min_follicular, save_base_path)
 
     # Roc curve tutorials
-    y_true = bootstrapped_df[0] >= ground_truth_min_follicular
+    # y_true = bootstrapped_df[0] >= ground_truth_min_follicular
     # y_pred = bootstrapped_df[1] >= predicted_min_follicular
     # plot_roc_curve(y_true, y_pred)
     # plot_precision_recall_curve(y_true, y_pred)
+
+
+    y_true = bootstrapped_df[0] < ground_truth_min_follicular
 
     # -------- Varying Predicted Min Follicular Thresholds ------------
     predicted_min_follicular_list, precision_list, recall_list, f1_list = get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicular)
@@ -70,7 +73,10 @@ def bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_d
     _, precision_list2, recall_list2, _ = get_precision_recall_at_thresholds(bootstrapped_df2, ground_truth_min_follicular)
     _, precision_list3, recall_list3, _ = get_precision_recall_at_thresholds(bootstrapped_df3, ground_truth_min_follicular)
 
-    y_true = bootstrapped_df1[0] >= ground_truth_min_follicular
+    # y_true = bootstrapped_df1[0] >= ground_truth_min_follicular
+
+    y_true = bootstrapped_df1[0] < ground_truth_min_follicular
+
 
     bootstrap_viz.plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1,
                                                             precision_list2, recall_list2,
@@ -85,9 +91,9 @@ def get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicu
     predicted_min_follicular_list = []
     for_step = 1
     if len(str(ground_truth_min_follicular)) > 2:
-        for_step = 10 ** (len(str(int(ground_truth_min_follicular))) - 2)
+        for_step = 10 ** (len(str(int(ground_truth_min_follicular))) - 2)  # either 1, 10, 100, ...
     print('for_step', for_step)
-    for predicted_min_follicular in range(0, ground_truth_min_follicular * 2, for_step):
+    for predicted_min_follicular in range(1, ground_truth_min_follicular * 2, for_step):
         a_precision, a_recall, a_f1 = stats_at_threshold(bootstrapped_df, ground_truth_min_follicular,
                                                          predicted_min_follicular, DEBUG=True)
         predicted_min_follicular_list.append(predicted_min_follicular)
@@ -331,19 +337,36 @@ def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, gro
 
 
 def stats_at_threshold(box_counts_df, ground_truth_min_follicular, predicted_min_follicular, DEBUG):
-    true_positive = box_counts_df.loc[
-        (box_counts_df[0] >= ground_truth_min_follicular) & (box_counts_df[1] >= predicted_min_follicular)]
+    # true_positive = box_counts_df.loc[
+    #     (box_counts_df[0] >= ground_truth_min_follicular) & (box_counts_df[1] >= predicted_min_follicular)]
+    # true_negative = box_counts_df.loc[
+    #     (box_counts_df[0] < ground_truth_min_follicular) & (box_counts_df[1] < predicted_min_follicular)]
+    # false_positive = box_counts_df.loc[
+    #     (box_counts_df[0] < ground_truth_min_follicular) & (box_counts_df[1] >= predicted_min_follicular)]
+    # false_negative = box_counts_df.loc[
+    #     (box_counts_df[0] >= ground_truth_min_follicular) & (box_counts_df[1] < predicted_min_follicular)]
+
+    # 12/27/2021 swap definition of positive and negative case after Dr.Lee's suggestion
+    # positive is inadequate slide
+    # negative is adequate slide
     true_negative = box_counts_df.loc[
+        (box_counts_df[0] >= ground_truth_min_follicular) & (box_counts_df[1] >= predicted_min_follicular)]
+    true_positive = box_counts_df.loc[
         (box_counts_df[0] < ground_truth_min_follicular) & (box_counts_df[1] < predicted_min_follicular)]
-    false_positive = box_counts_df.loc[
-        (box_counts_df[0] < ground_truth_min_follicular) & (box_counts_df[1] >= predicted_min_follicular)]
     false_negative = box_counts_df.loc[
+        (box_counts_df[0] < ground_truth_min_follicular) & (box_counts_df[1] >= predicted_min_follicular)]
+    false_positive = box_counts_df.loc[
         (box_counts_df[0] >= ground_truth_min_follicular) & (box_counts_df[1] < predicted_min_follicular)]
 
     true_positive = len(true_positive)
     true_negative = len(true_negative)
     false_positive = len(false_positive)
     false_negative = len(false_negative)
+
+    print('true_positives', true_positive, end='  ')
+    print('true_negative', true_negative, end='  ')
+    print('false_positives', false_positive, end='  ')
+    print('false_negative', false_negative)
 
     precision = true_positive / (true_positive + false_positive)
     recall = true_positive / (true_positive + false_negative)
