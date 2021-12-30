@@ -7,7 +7,7 @@ Using a Deep Learning-based Classifier**
 by Junbong Jang, Young Kim, Brian Westgate, Yang Zong, Caleb Hallinan, Ali Akalin, Kwonmoo Lee
 
 <div align="center">
-  <img width=600 src="./assets/cover_FNA.png" alt="FNA-Net">
+  <img width=500 src="./assets/cover_FNA.png" alt="FNA-Net">
 </div>  
 
 This project is in collaboration with UMass Medical Center to automatically detect follicular clusters 
