@@ -9,7 +9,7 @@ by Junbong Jang, Young Kim, Brian Westgate, Yang Zong, Caleb Hallinan, Ali Akali
 <!-- To learn more about our pipeline (FNA-Net), please read the [paper]( ) -->
 
 <div text-align="center">
-  <img width="300" src="./assets/cover_FNA.png" alt="FNA-Net">
+  <img width="300" src="./assets/cover_FNA.png" alt="FNA-Net" style="text-align:center">
 </div>  
 
 Collaboration with UMass Medical Center to automatically detect follicular clusters in unstained slides.  
