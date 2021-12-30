@@ -54,8 +54,9 @@ the pixel-wise location of the follicular clusters.
   * store mask files in the masks folder
 * Randomly split the dataset into training, validation and test set by running
   * data_processing/train_test_split.py
-* Convert mask labels to ground truth boxes by running data_processing/mask_to_box_labels.py
-  * Store the generated numpy file in the generated folder
+* Convert mask labels to ground truth boxes by running 
+  * data_processing/mask_to_box_labels.py
+* Store the coordinates of the ground truth follicular boxes as the numpy file in the generated folder
   * Our ground truth boxes are stored in generated/ground_truth_boxes.npy
 
 # Training and Evaluation of the patch-wise classifier,
