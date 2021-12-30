@@ -43,6 +43,7 @@ Alternatively, the user can build custom slide scanner and use our code to run t
 * Connect to Arduino mounted in our Slide Scanner
 * Connect to Amscope USB camera
 * Run machine_control/PhotoCapture.py
+
 Then, the slide scanner will automatically move the slide and take photos of the entire slide within a few minutes
  
 # Dataset
