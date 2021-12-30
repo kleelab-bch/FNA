@@ -10,7 +10,7 @@ by Junbong Jang, Young Kim, Brian Westgate, Yang Zong, Caleb Hallinan, Ali Akali
   <img width=500 src="./assets/cover_FNA.png" alt="FNA-Net">
 </div>  
 
-This project is in collaboration with UMass Medical Center to automatically detect follicular clusters 
+This project is done in collaboration with UMass Medical Center to automatically detect follicular clusters 
 in the FNA thyroid biopsy samples smeared on unstained slides 
 and classify the adequacy of the unstained slides for further diagnosis.  
 <!-- To learn more about our pipeline (FNA-Net), please read our [paper]( ) -->
