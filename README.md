@@ -85,4 +85,4 @@ Also, it performs the hierarchical bootstrapping and visualizes its summary stat
 
 * In the command prompt or terminal based on the user's operating systems, run  
   * evaluation/run_eval.py
-  * Then, the results are generated in the evaluation/generated folder
+* Then, the results are generated in the evaluation/generated folder
