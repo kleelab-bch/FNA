@@ -6,7 +6,7 @@
 Using a Deep Learning-based Classifier**  
 by Junbong Jang, Young Kim, Brian Westgate, Yang Zong, Caleb Hallinan, Ali Akalin, Kwonmoo Lee
 
-<div text-align="center">
+<div align="center">
   <img width="300" src="./assets/cover_FNA.png" alt="FNA-Net">
 </div>  
 
