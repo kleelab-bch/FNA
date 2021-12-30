@@ -1,10 +1,26 @@
-# Fine-Needle-Aspiration (FNA) screening pipeline
+# Fine-Needle-Aspiration screening pipeline (FNA-Net)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT) 
+[![Repo Size](https://img.shields.io/github/repo-size/kleelab-bch/FNA-Net?style=plastic)]()
+
+**Screening Adequacy of Unstained Fine Needle Aspiration Samples
+Using a Deep Learning-based Classifier**  
+by Junbong Jang, Young Kim, Brian Westgate, Yang Zong, Caleb Hallinan, Ali Akalin, Kwonmoo Lee
+
+<!-- To learn more about our pipeline (FNA-Net), please read the [paper]( ) -->
+
+<div text-align="center">
+  <img width="300" src="./assets/cover_FNA.png" alt="FNA-Net">
+</div>  
+
 Collaboration with UMass Medical Center to automatically detect follicular clusters in unstained slides.  
 This repository includes code for running our Slide Scanner and FNA-Net deep learning pipeline.
 
 
 # Software Requirements
-* Python v3.8.10
+* Works in Ubuntu v16.04, v18.04, Windows 10, and Mac OS.
+* Python v3.8
+* Tensorflow v2.2 & CUDA v10.1 or Tensorflow v2.4 & CUDA v11.3
+
 
 # Installation
 * install Python and Python packages as listed in requirements.txt
@@ -23,18 +39,19 @@ This repository includes code for running our Slide Scanner and FNA-Net deep lea
 * download the MARS-Net from the Github repository https://github.com/kleelab-bch/MARS-Net
 * Follow the instructions in MARS-Net repository for installation and cropping. 
 * Then, run the following files in order to train and evaluate the classifier
-    * Segmentation/models/train.py 
-    * Segmentation/models/predict.py 
-    * Segmentation/models/evaluate_classifier.py 
+    * MARS-Net/models/train.py 
+    * MARS-Net/models/predict.py 
+    * MARS-Net/models/evaluate_classifier.py 
 
-# Training and Evaluation of the Faster R-CNN,
-* please refer to Tensorflow Object Detection API at https://github.com/tensorflow/models/tree/master/research/object_detection
+# Training of the Faster R-CNN,
+* Please refer to documents for Tensorflow Object Detection API at https://github.com/tensorflow/models/tree/master/research/object_detection
+* We used "Faster R-CNN Inception ResNet V2 640x640" downloaded from https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md
 
 # Evaluation of the box overlaps between ground truth and the predictions
 This section can replicate the figures that are presented in the paper.
 * Download FNA-Net from this repository
-* Run in cmd or terminal based on the user's operating systems (Windows 10 / Ubuntu 16.04)
-  * >evaluation/run_eval.py
+* In the command prompt or terminal based on the user's operating systems, run  
+  * \> evaluation/run_eval.py
   * Results will be generated in the evaluation/generated folder
 * Inside run_eval_final function in the run_eval.py, 
   * overlay_two_model_overlapped_polygons_over_images function draws bounding box for every follicular cluster classified to be true in the image patch
