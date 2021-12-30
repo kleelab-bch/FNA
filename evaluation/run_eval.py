@@ -119,6 +119,17 @@ def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, 
 
 
 def run_eval_final():
+    '''
+    Here is the brief explanation of evaluation functions called in run_eval_final()
+
+    overlay_two_model_overlapped_polygons_over_images function draws bounding box for every follicular cluster classified to be true in the image patch
+    bootstrap_two_model_polygons function bootstraps the samples. This can take several minutes.
+    After bootstrapping, bootstrap_analysis function performs analysis such as plotting histogram and precision-recall curves
+    bootstrap_analysis_compare_precision_recall can be run at the end after bootstrapping samples from each model (MTL, faster R-CNN, and MTL+faster R-CNN). It draws a precision-recall curve for each model on the same plot for comparison.
+
+    :return:
+    '''
+
     # get MTL boxes
     model_type = 'MTL_auto_reg_aut'  # MTL model with classification and segmentation branches only
     ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
