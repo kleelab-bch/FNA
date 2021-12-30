@@ -38,10 +38,10 @@ Codes for MARS-Net and Faster R-CNN can be obtained from different repositories.
   * pip install rasterio-1.2.3-cp38-cp38-win_amd64
  
 # Slide Scanner
-Please note that the user need to have our Slide Scanner to perform this step.
-Alternatively, Users can also build their custom slide scanner and use our code in this section.
-* Connect to Arduino mounted in our Slide Scanner
-* Run PhotoCapture.py
+Please note that the user need our Slide Scanner to perform this step.
+Alternatively, the user can build custom slide scanner and use our code to run the scanner.
+* Connect USB to Arduino mounted in our Slide Scanner
+* Run machine_control/PhotoCapture.py
 Then, the slide scanner will automatically move the slide and take photos of the entire slide within a few minutes
  
 # Dataset
