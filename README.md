@@ -38,13 +38,13 @@ Codes for MARS-Net and Faster R-CNN can be obtained from different repositories.
   * pip install rasterio-1.2.3-cp38-cp38-win_amd64
  
 # Slide Scanner
-Please note that the user need our Slide Scanner to perform this step.
-Alternatively, the user can build custom slide scanner and use our code to run the scanner.
+Please note that the user needs our Slide Scanner to perform this step.
+Alternatively, the user can build a custom slide scanner and use our code to run the scanner.
 * Connect to Arduino mounted in our Slide Scanner
 * Connect to Amscope USB camera
 * Run machine_control/PhotoCapture.py
 
-Then, the slide scanner will automatically move the slide and take photos of the entire slide within a few minutes
+Then, the slide scanner will automatically move the slide and take photos of the entire slide within a few minutes.
  
 # Dataset
 We assume that the user has the dataset comprised of images and their masks indicating 
@@ -61,7 +61,7 @@ the pixel-wise location of the follicular clusters.
 # Training and Evaluation of the patch-wise classifier,
 * Download MARS-Net from the Github repository https://github.com/kleelab-bch/MARS-Net
 * Follow the instructions in MARS-Net repository for installation and cropping. 
-* Then, run the following Python scripts in order to train and evaluate the classifier
+* Then, run the following Python scripts to train and evaluate the classifier
     * MARS-Net/models/train.py 
     * MARS-Net/models/predict.py 
     * MARS-Net/models/evaluate_classifier.py 
@@ -69,7 +69,7 @@ the pixel-wise location of the follicular clusters.
   * Our detected follicular boxes are stored in generated/MTL_auto_reg_aut_boxes.npy
 
 # Training of the Faster R-CNN,
-For detailed explanation on training the object detection model, please refer to documents for Tensorflow Object Detection API at https://github.com/tensorflow/models/tree/master/research/object_detection
+For a detailed explanation on training the object detection model, please refer to documents for Tensorflow Object Detection API at https://github.com/tensorflow/models/tree/master/research/object_detection
 * Download "Faster R-CNN Inception ResNet V2 640x640" from https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md
 * In its pipeline.config file, change "fine_tune_checkpoint", "label_map_path", "input_path" based on user's path and set num_classes to 2
 * Convert image and mask dataset into the tfrecord format
@@ -85,4 +85,4 @@ Also, it performs the hierarchical bootstrapping and visualizes its summary stat
 
 * In the command prompt or terminal based on the user's operating systems, run  
   * evaluation/run_eval.py
-  * Then, the results will be generated in the evaluation/generated folder
+  * Then, the results are generated in the evaluation/generated folder
