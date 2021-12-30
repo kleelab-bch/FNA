@@ -40,7 +40,8 @@ Codes for MARS-Net and Faster R-CNN can be obtained from different repositories.
 # Slide Scanner
 Please note that the user need our Slide Scanner to perform this step.
 Alternatively, the user can build custom slide scanner and use our code to run the scanner.
-* Connect USB to Arduino mounted in our Slide Scanner
+* Connect to Arduino mounted in our Slide Scanner
+* Connect to Amscope USB camera
 * Run machine_control/PhotoCapture.py
 Then, the slide scanner will automatically move the slide and take photos of the entire slide within a few minutes
  
