@@ -1,6 +1,5 @@
 # Fine-Needle-Aspiration screening pipeline (FNA-Net)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT) 
-[![Repo Size](https://img.shields.io/github/repo-size/kleelab-bch/FNA-Net?style=plastic)]()
 
 **Screening Adequacy of Unstained Fine Needle Aspiration Samples
 Using a Deep Learning-based Classifier**  
