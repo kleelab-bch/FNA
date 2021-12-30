@@ -24,7 +24,8 @@ This repository includes code for running our Slide Scanner and FNA-Net deep lea
 
 # Installation
 * install Python and Python packages as listed in requirements.txt
-### How to import rasterio (instructions for Windows 10)
+
+#### How to import rasterio (instructions for Windows 10)
 * Go to https://www.lfd.uci.edu/~gohlke/pythonlibs/
 * Download 
   * Fiona-1.8.19-cp38-cp38-win_amd64
@@ -36,9 +37,9 @@ This repository includes code for running our Slide Scanner and FNA-Net deep lea
   * pip install rasterio-1.2.3-cp38-cp38-win_amd64
   
 # Training and Evaluation of the patch-wise classifier,
-* download the MARS-Net from the Github repository https://github.com/kleelab-bch/MARS-Net
+* Download MARS-Net from the Github repository https://github.com/kleelab-bch/MARS-Net
 * Follow the instructions in MARS-Net repository for installation and cropping. 
-* Then, run the following files in order to train and evaluate the classifier
+* Then, run the following Python scripts in order to train and evaluate the classifier
     * MARS-Net/models/train.py 
     * MARS-Net/models/predict.py 
     * MARS-Net/models/evaluate_classifier.py 
@@ -47,15 +48,17 @@ This repository includes code for running our Slide Scanner and FNA-Net deep lea
 * Please refer to documents for Tensorflow Object Detection API at https://github.com/tensorflow/models/tree/master/research/object_detection
 * We used "Faster R-CNN Inception ResNet V2 640x640" downloaded from https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md
 
-# Evaluation of the box overlaps between ground truth and the predictions
-This section can replicate the figures that are presented in the paper.
-* Download FNA-Net from this repository
+# Evaluation of the FNA-Net
+This section calculates the area overlap between the ground truth mask and the prediction boxes and
+visualizes follicular cluster detection results per image. 
+Also, it performs the hierarchical bootstrapping and visualizes its summary statistics and precision-recall curves of models.
+
+* Download and install this repository 
 * In the command prompt or terminal based on the user's operating systems, run  
-  * \> evaluation/run_eval.py
+  * \> python evaluation/run_eval.py
   * Results will be generated in the evaluation/generated folder
 * Inside run_eval_final function in the run_eval.py, 
   * overlay_two_model_overlapped_polygons_over_images function draws bounding box for every follicular cluster classified to be true in the image patch
   * bootstrap_two_model_polygons function bootstraps the samples. This can take several minutes.
-  * After bootstrapping, bootstrap_analysis function performs analysis such as plotting histogram, and precision recall curves      
-  * bootstrap_analysis_compare_precision_recall can be run at the end after bootstrapping samples from each model (MTL, faster R-CNN and MTL+faster R-CNN). It draws precision-recall curve for each model on the same plot for comparison.
-
+  * After bootstrapping, bootstrap_analysis function performs analysis such as plotting histogram and precision-recall curves      
+  * bootstrap_analysis_compare_precision_recall can be run at the end after bootstrapping samples from each model (MTL, faster R-CNN, and MTL+faster R-CNN). It draws a precision-recall curve for each model on the same plot for comparison.
