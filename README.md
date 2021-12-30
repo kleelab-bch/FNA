@@ -6,14 +6,16 @@
 Using a Deep Learning-based Classifier**  
 by Junbong Jang, Young Kim, Brian Westgate, Yang Zong, Caleb Hallinan, Ali Akalin, Kwonmoo Lee
 
+This project is in collaboration with UMass Medical Center to automatically detect follicular clusters 
+in the FNA thyroid biopsy samples smeared on unstained slides 
+and classify the adequacy of the unstained slides for further diagnosis.  
 <!-- To learn more about our pipeline (FNA-Net), please read the [paper]( ) -->
 
 <div text-align="center">
-  <img width="300" src="./assets/cover_FNA.png" alt="FNA-Net" style="text-align:center">
+  <img width="300" src="./assets/cover_FNA.png" alt="FNA-Net">
 </div>  
 
-Collaboration with UMass Medical Center to automatically detect follicular clusters in unstained slides.  
-This repository includes code for running our Slide Scanner and FNA-Net deep learning pipeline.
+This repository includes the codes for running our Slide Scanner and FNA-Net.
 
 
 # Software Requirements
