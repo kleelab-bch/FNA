@@ -7,7 +7,7 @@ Helper functions to visualize bootstrapping results
 
 import numpy as np
 import matplotlib
-matplotlib.use('agg')
+# matplotlib.use('agg')
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import roc_auc_score, auc, roc_curve, precision_recall_curve, f1_score
@@ -215,7 +215,7 @@ def plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1
     plt.ylabel('Precision', fontsize='large')
 
     plt.xlim(left=0, right=1.02)
-    plt.ylim(bottom= math.floor(no_skill*100)/100)
+    # plt.ylim(bottom= math.floor(no_skill*100)/100)
     plt.legend(loc="lower left", bbox_to_anchor=(0, 0.05))
     figure_postprocess()
     plt.savefig(save_base_path + f'precision_recall_curve_at_thresholds_threshold_{ground_truth_min_follicular}.svg')

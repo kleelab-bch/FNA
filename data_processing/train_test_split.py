@@ -68,8 +68,9 @@ if __name__ == "__main__":
 
     root_dir = "../../Segmentation/assets/FNA/"
 
-    follicular_test_filenames = ['ha2780-third-0331.png', 'ha2780-third-0275.png', 'gp2781-first-0410.png', 'gp2781-first-0477.png',
-                                 'gp2781-third-0578.png', 'gp2781-fourth-0581.png', 'jm2776-first-0142.png', 'jm2775-third-0236.png']
+    follicular_test_filenames = []
+    # follicular_test_filenames = ['ha2780-third-0331.png', 'ha2780-third-0275.png', 'gp2781-first-0410.png', 'gp2781-first-0477.png',
+    #                              'gp2781-third-0578.png', 'gp2781-fourth-0581.png', 'jm2776-first-0142.png', 'jm2775-third-0236.png']
     orig_mask_folder_path = root_dir + 'FNA_train_val/mask/'
 
     # ------------------- User Parameter Setting Done --------------------------
@@ -82,47 +83,47 @@ if __name__ == "__main__":
     random.shuffle(secretion_file_names)
     random.shuffle(follicular_file_names)
 
-    total_fold = 6
-
     # --------- sampling from each category for train/val/test split ---------
-    # secretion_sample_num = 35
-    # follicular_sample_num = 8
-    # secretion_index_list = random.sample(range(0, len(secretion_file_names)-1), secretion_sample_num)
-    # secretion_image_list = [secretion_file_names[i] for i in secretion_index_list]
-    # follicular_index_list = random.sample(range(0, len(follicular_file_names)-1), follicular_sample_num)
-    # follicular_image_list = [follicular_file_names[i] for i in follicular_index_list]
-    # split_type = 'test'  # valid or test
+    secretion_sample_num = 35
+    follicular_sample_num = 8
+    secretion_index_list = random.sample(range(0, len(secretion_file_names)-1), secretion_sample_num)
+    secretion_image_list = [secretion_file_names[i] for i in secretion_index_list]
+    follicular_index_list = random.sample(range(0, len(follicular_file_names)-1), follicular_sample_num)
+    follicular_image_list = [follicular_file_names[i] for i in follicular_index_list]
+    split_type = 'test'  # valid or test
     # if split_type == 'test':
     #     follicular_image_list = follicular_test_filenames
+
+    print('sampled secretion:', secretion_image_list)
+    print('sampled follicular:', follicular_image_list)
+
+    move_files_to_another_folder(root_dir, split_type)
+
+    # --------- N-fold cross validation --------------
+    # total_fold = 6
     #
-    # print('sampled secretion:', secretion_image_list)
-    # print('sampled follicular:', follicular_image_list)
+    # for a_fold in range(total_fold):
+    #     print('a_fold', a_fold)
     #
-    # move_files_to_another_folder(root_dir, split_type)
-
-    # --------- cross validation --------------
-    for a_fold in range(total_fold):
-        print('a_fold', a_fold)
-
-        assert ((len(secretion_file_names)/total_fold - int(len(secretion_file_names)/total_fold)) == 0)
-        secretion_low_index = a_fold*len(secretion_file_names)//total_fold
-        secretion_high_index = (a_fold+1)*len(secretion_file_names)//total_fold
-        follicular_low_index = a_fold*len(follicular_file_names)//total_fold
-        follicular_high_index = (a_fold+1)*len(follicular_file_names)//total_fold
-        print(secretion_low_index, secretion_high_index)
-        print(follicular_low_index, follicular_high_index)
-
-        val_secretion_file_names = secretion_file_names[secretion_low_index:secretion_high_index]
-        val_follicular_file_names = follicular_file_names[follicular_low_index:follicular_high_index]
-
-        train_secretion_file_names = [item for item in secretion_file_names if item not in val_secretion_file_names]
-        train_follicular_file_names = [item for item in follicular_file_names if item not in val_follicular_file_names]
-
-        print('val_secretion_file_names', len(val_secretion_file_names))
-        print('val_follicular_file_names', len(val_follicular_file_names))
-        print('train_secretion_file_names', len(train_secretion_file_names))
-        print('train_follicular_file_names', len(train_follicular_file_names))
-
-        move_files_to_another_folder(root_dir, f'FNA_valid_fold{a_fold}', val_secretion_file_names, val_follicular_file_names)
-        move_files_to_another_folder(root_dir, f'FNA_train_fold{a_fold}', train_secretion_file_names, train_follicular_file_names)
+    #     assert ((len(secretion_file_names)/total_fold - int(len(secretion_file_names)/total_fold)) == 0)
+    #     secretion_low_index = a_fold*len(secretion_file_names)//total_fold
+    #     secretion_high_index = (a_fold+1)*len(secretion_file_names)//total_fold
+    #     follicular_low_index = a_fold*len(follicular_file_names)//total_fold
+    #     follicular_high_index = (a_fold+1)*len(follicular_file_names)//total_fold
+    #     print(secretion_low_index, secretion_high_index)
+    #     print(follicular_low_index, follicular_high_index)
+    #
+    #     val_secretion_file_names = secretion_file_names[secretion_low_index:secretion_high_index]
+    #     val_follicular_file_names = follicular_file_names[follicular_low_index:follicular_high_index]
+    #
+    #     train_secretion_file_names = [item for item in secretion_file_names if item not in val_secretion_file_names]
+    #     train_follicular_file_names = [item for item in follicular_file_names if item not in val_follicular_file_names]
+    #
+    #     print('val_secretion_file_names', len(val_secretion_file_names))
+    #     print('val_follicular_file_names', len(val_follicular_file_names))
+    #     print('train_secretion_file_names', len(train_secretion_file_names))
+    #     print('train_follicular_file_names', len(train_follicular_file_names))
+    #
+    #     move_files_to_another_folder(root_dir, f'FNA_valid_fold{a_fold}', val_secretion_file_names, val_follicular_file_names)
+    #     move_files_to_another_folder(root_dir, f'FNA_train_fold{a_fold}', train_secretion_file_names, train_follicular_file_names)
 
