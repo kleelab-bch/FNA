@@ -59,7 +59,7 @@ the pixel-wise location of the follicular clusters.
 * Store the coordinates of the ground truth follicular boxes as the numpy file in the generated folder
   * Our ground truth boxes are stored in generated/ground_truth_boxes.npy
 
-# Training and Evaluation of the patch-wise classifier,
+# Training and Evaluation of multi-task learning (MTL) patch-wise classifier
 * Download MARS-Net from the Github repository https://github.com/kleelab-bch/MARS-Net
 * Follow the instructions in MARS-Net repository for installation and cropping. 
 * Then, run the following Python scripts to train and evaluate the classifier
@@ -69,7 +69,7 @@ the pixel-wise location of the follicular clusters.
 * Store the coordinates of the detected follicular boxes as the numpy file in the generated folder
   * Our detected follicular boxes are stored in generated/MTL_auto_reg_aut_boxes.npy
 
-# Training of the Faster R-CNN,
+# Training Faster R-CNN
 For a detailed explanation on training the object detection model, please refer to documents for Tensorflow Object Detection API at https://github.com/tensorflow/models/tree/master/research/object_detection
 * Download "Faster R-CNN Inception ResNet V2 640x640" from https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md
 * In its pipeline.config file, change "fine_tune_checkpoint", "label_map_path", "input_path" based on user's path and set num_classes to 2
@@ -84,6 +84,7 @@ This section calculates the area overlap between the ground truth mask and the p
 visualizes follicular cluster detection results per image. 
 Also, it performs the hierarchical bootstrapping and visualizes its summary statistics and precision-recall curves of models.
 
+* In the evaluation/run_eval.py, edit the root_path variable to a user's FNA-Net project path in line 196.
 * In the command prompt or terminal based on the user's operating systems, run  
   * evaluation/run_eval.py
 * Then, the results are generated in the evaluation/generated folder

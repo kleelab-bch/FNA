@@ -14,8 +14,6 @@ from explore_data import get_files_in_folder, get_images_by_subject, print_image
 from bootstrapping import bootstrap_analysis, bootstrap_analysis_compare_precision_recall, bootstrap_data, bootstrap_two_model_polygons
 
 
-root_path = 'C:/Users/JunbongJang/PycharmProjects/'  # 'C:/Users/Jun/Documents/PycharmProjects/'
-
 def convert_mask_to_box(ground_truth_mask_root_path):
     ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
     ground_truth_mask_names.sort()
@@ -75,7 +73,7 @@ def run_cam(model_type, img_root_path):
         visualizer_obj.visualize_feature_activation_map(feature_map, img_root_path, image_name, save_heatmap_path)
 
 
-def get_data_path(model_type):
+def get_data_path(model_type, root_path):
     base_path = root_path + 'MARS-Net/'
     ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
     img_root_path = base_path + 'assets/FNA/FNA_test/img/'
@@ -117,7 +115,7 @@ def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, 
     # run_cam(model_type, img_root_path)
 
 
-def run_eval_final():
+def run_eval_final(root_path):
     '''
     Here is the brief explanation of evaluation functions called in run_eval_final()
 
@@ -131,7 +129,7 @@ def run_eval_final():
 
     # get MTL boxes
     model_type = 'MTL_auto_reg_aut'  # MTL model with classification and segmentation branches only
-    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
+    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type, root_path)
     ground_truth_box_load_path = f'{root_path}/FNA/generated/'
     # ground_truth_boxes = np.load(f"{ground_truth_box_load_path}/ground_truth_boxes.npy", allow_pickle=True)
     mtl_prediction_images_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
@@ -139,7 +137,7 @@ def run_eval_final():
 
     # get Faster R-CNN boxes
     model_type = 'faster_640'
-    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
+    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type, root_path)
     faster_rcnn_prediction_images_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
 
     test_image_names = get_files_in_folder(img_root_path)
@@ -195,12 +193,14 @@ def run_eval_final():
 
 
 if __name__ == "__main__":
+    root_path = 'C:/Users/JunbongJang/PycharmProjects/'  # 'C:/Users/Jun/Documents/PycharmProjects/'
+
     # model_type = 'faster_640'
     # model_type = 'MTL_auto_reg_aut'
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    run_eval_final()
+    run_eval_final(root_path)
 
     # Visualizer().manuscript_draw_comparison_bar_graph()
 
