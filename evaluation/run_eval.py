@@ -167,7 +167,7 @@ def run_eval_final(root_path):
                                                                      faster_rcnn_prediction_images_boxes, model_type)
 
         # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
-        bootstrap_model_type = 'bootstrapped_{model_type}'
+        bootstrap_model_type = f'bootstrapped_{model_type}'
         save_base_path = f"{load_path}/{bootstrap_model_type}_polygon/"
 
         bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
