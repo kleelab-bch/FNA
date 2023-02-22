@@ -215,8 +215,8 @@ class Visualizer:
         return list_of_polygons
 
 
-    # https://rocreguant.com/convert-a-mask-into-a-polygon-for-images-using-shapely-and-rasterio/1786/
     def mask_to_polygons_layer(self, mask):
+        # refer to https://rocreguant.com/convert-a-mask-into-a-polygon-for-images-using-shapely-and-rasterio/1786/
         all_polygons = []
         for shape, value in features.shapes(mask.astype(np.uint8), mask=(mask > 0), transform=rasterio.Affine(1.0, 0, 0, 0, 1.0, 0)):
             all_polygons.append(shapely.geometry.shape(shape))

@@ -61,11 +61,14 @@ the pixel-wise location of the follicular clusters.
 
 # Training and Evaluation of multi-task learning (MTL) patch-wise classifier
 * Download MARS-Net from the Github repository https://github.com/kleelab-bch/MARS-Net
-* Follow the instructions in MARS-Net repository for installation and cropping. 
+* Follow the instructions in MARS-Net repository for installation.
+  * To train the best model, set self.strategy_type = 'FNA_VGG19_MTL_auto_reg_aut_input256_patience_10'
+* To Crop,
+  * MARS-Net/crop/crop.py
 * Then, run the following Python scripts to train and evaluate the classifier
-    * MARS-Net/models/train.py 
-    * MARS-Net/models/predict.py 
-    * MARS-Net/models/evaluate_classifier.py 
+  * MARS-Net/models/train.py 
+  * MARS-Net/models/predict.py 
+  * MARS-Net/models/evaluate_classifier.py 
 * Store the coordinates of the detected follicular boxes as the numpy file in the generated folder
   * Our detected follicular boxes are stored in generated/MTL_auto_reg_aut_boxes.npy
 
