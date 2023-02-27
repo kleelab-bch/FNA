@@ -20,13 +20,14 @@ Codes for MARS-Net and Faster R-CNN can be obtained from different repositories.
 
 # Software Requirements
 * Works in Ubuntu v16.04, v18.04, Windows 10, and Mac OS.
-* Python v3.8
+* Python v3.8/v3.10
 * Tensorflow v2.2 & CUDA v10.1 or Tensorflow v2.4 & CUDA v11.3
 
 # Installation
 * Download this repository 
-* Install Python v3.8 and Python packages listed in requirements.txt
-#### (instructions for Windows 10)
+* Install Python v3.8/v3.10 and Python packages listed in requirements.txt
+
+## Additional instructions for Python v3.8 in Windows 10 
 * Go to https://www.lfd.uci.edu/~gohlke/pythonlibs/
 * Download 
   * Fiona-1.8.19-cp38-cp38-win_amd64

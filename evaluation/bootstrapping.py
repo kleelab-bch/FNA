@@ -91,7 +91,7 @@ def get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicu
     for_step = 1
     if len(str(ground_truth_min_follicular)) > 2:
         for_step = 10 ** (len(str(int(ground_truth_min_follicular))) - 2)  # either 1, 10, 100, ...
-    print('for_step', for_step)
+    print('get_precision_recall_at_thresholds for_step', for_step)
     for predicted_min_follicular in range(1, ground_truth_min_follicular * 2, for_step):
         a_precision, a_recall, a_f1 = stats_at_threshold(bootstrapped_df, ground_truth_min_follicular,
                                                          predicted_min_follicular, DEBUG=True)
@@ -99,7 +99,7 @@ def get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicu
         precision_list.append(a_precision)
         recall_list.append(a_recall)
         f1_list.append(a_f1)
-
+    print('------------------------------------------')
     return predicted_min_follicular_list, precision_list, recall_list, f1_list
 
 
@@ -291,12 +291,8 @@ def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, gro
             one_ground_truth_polygons = list_of_ground_truth_polygons[image_name_to_index[filename]]
             faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename].copy()
 
-            faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,
-                                                                   0] * img.height, faster_rcnn_predicted_boxes[:,
-                                                                                    2] * img.height  # 1944
-            faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:,
-                                                                   1] * img.width, faster_rcnn_predicted_boxes[:,
-                                                                                   3] * img.width  # 2592
+            faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:, 0] * img.height, faster_rcnn_predicted_boxes[:, 2] * img.height  # 1944
+            faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:, 1] * img.width, faster_rcnn_predicted_boxes[:, 3] * img.width  # 2592
             mtl_predicted_boxes = mtl_prediction_images_boxes.item()[image_name_to_index[filename]]
 
             if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
@@ -365,11 +361,6 @@ def stats_at_threshold(box_counts_df, ground_truth_min_follicular, predicted_min
     true_negative = len(true_negative)
     false_positive = len(false_positive)
     false_negative = len(false_negative)
-
-    print('true_positives', true_positive, end='  ')
-    print('true_negative', true_negative, end='  ')
-    print('false_positives', false_positive, end='  ')
-    print('false_negative', false_negative)
 
     precision = true_positive / (true_positive + false_positive)
     recall = true_positive / (true_positive + false_negative)

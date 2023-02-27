@@ -404,7 +404,7 @@ class Visualizer:
             one_ground_truth_polygons = list_of_ground_truth_polygons[idx]
 
             # one_ground_truth_polygons = ground_truth_boxes.item()[orig_filename]
-            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename]
+            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename].copy()
 
             faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,0] *img.height, faster_rcnn_predicted_boxes[:,2] *img.height  # 1944
             faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:,1] *img.width, faster_rcnn_predicted_boxes[:,3] *img.width  # 2592
