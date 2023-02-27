@@ -163,10 +163,14 @@ def count_overlap_polygons(ground_truth_polygons, predicted_polygons):
         total_gt_polygons = 1
         ground_truth_polygons = [ground_truth_polygons]
     else:
+        ground_truth_polygons = list(ground_truth_polygons.geoms)
         total_gt_polygons = len(ground_truth_polygons)
 
     if predicted_polygons.geom_type == 'Polygon':
         predicted_polygons = [predicted_polygons]
+    else:
+        predicted_polygons = list(predicted_polygons.geoms)
+
 
     gt_overlaps = 0
     gt_overlap_pair = []

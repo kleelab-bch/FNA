@@ -367,6 +367,8 @@ class Visualizer:
 
             if polygons.boundary.geom_type == 'LineString':
                 polygon_boundaries = [polygon_boundaries]
+            else:
+                polygon_boundaries = list(polygon_boundaries.geoms)
 
             for b in polygon_boundaries:  # combine two columns of x and y into tuples of x and y
                 coords = np.dstack(b.coords.xy).tolist()
@@ -464,15 +466,6 @@ class Visualizer:
                 save_filename = save_base_path + filename
                 overlaid_img.save(save_filename)
 
-        if model_type == 'faster-rcnn_overlap':
-            assert total_gt_overlaps == 16
-            assert total_false_positive == 6
-            assert total_false_negative == 21
-        elif model_type == 'MTL_faster-rcnn_overlap':
-            assert total_gt_overlaps == 16
-            assert total_false_positive == 3
-            assert total_false_negative == 21
-
             # evaluate by F1, Precision and Recall
         print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
         precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
@@ -482,6 +475,16 @@ class Visualizer:
         print('recall:', round(recall, 3))
         print('f1:', round(f1, 3))
         print('total_iou:', round(total_iou/iou_counter,3))
+
+        print('model_type', model_type)
+        if model_type == 'faster-rcnn_overlap':
+            assert total_gt_overlaps == 16
+            assert total_false_positive == 6
+            assert total_false_negative == 21
+        elif model_type == 'MTL_faster-rcnn_overlap':
+            assert total_gt_overlaps == 16
+            assert total_false_positive == 3
+            assert total_false_negative == 21
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, model_type):

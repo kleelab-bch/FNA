@@ -25,6 +25,7 @@ models/results/history_*
 **/*.pickle 
 **/*.zip 
 **/checkpoint* 
+.*/**
 !.gitignore
 /staining_model/
 /evaluation_backup/

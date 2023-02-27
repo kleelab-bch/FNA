@@ -21,7 +21,6 @@ from calc_polygon import convert_boxes_to_polygons
 import bootstrapping_visualization as bootstrap_viz
 from explore_data import get_images_by_subject, print_images_by_subject_statistics
 
-
 def bootstrap_data(test_image_names, model_type, bootstrap_repetition_num, np_predicted_detection_boxes, np_ground_truth_boxes, save_base_path, img_root_path):
     # bootstrap both ground truth and prediction boxes
     print('Data Organization')
@@ -319,14 +318,18 @@ def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, gro
                     overlapped_prediction_polygon = mtl_polygon
 
                 # preprocess before counting to prevent error
-                if one_ground_truth_polygons is None:
+                if one_ground_truth_polygons.is_empty:
                     one_ground_truth_polygons = []
                 elif one_ground_truth_polygons.geom_type == 'Polygon':
                     one_ground_truth_polygons = [one_ground_truth_polygons]
-                if overlapped_prediction_polygon is None:
+                else:  # MultiPolygon
+                    one_ground_truth_polygons = list(one_ground_truth_polygons.geoms)
+                if overlapped_prediction_polygon.is_empty:
                     overlapped_prediction_polygon = []
                 elif overlapped_prediction_polygon.geom_type == 'Polygon':
                     overlapped_prediction_polygon = [overlapped_prediction_polygon]
+                else:  # MultiPolygon
+                    overlapped_prediction_polygon = list(overlapped_prediction_polygon.geoms)
 
                 ground_truth_polygons_total = ground_truth_polygons_total + len(one_ground_truth_polygons)
                 prediction_polygons_total = prediction_polygons_total + len(overlapped_prediction_polygon)

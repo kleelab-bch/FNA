@@ -63,7 +63,7 @@ the pixel-wise location of the follicular clusters.
 * Download MARS-Net from the Github repository https://github.com/kleelab-bch/MARS-Net
 * Follow the instructions in MARS-Net repository for installation.
   * To train the best model, set self.strategy_type = 'FNA_VGG19_MTL_auto_reg_aut_input256_patience_10'
-* To Crop,
+* To crop,
   * MARS-Net/crop/crop.py
 * Then, run the following Python scripts to train and evaluate the classifier
   * MARS-Net/models/train.py 
