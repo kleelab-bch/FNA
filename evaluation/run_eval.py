@@ -72,28 +72,6 @@ def run_cam(model_type, img_root_path):
         visualizer_obj.visualize_feature_activation_map(feature_map, img_root_path, image_name, save_heatmap_path)
 
 
-def get_data_path(model_type, root_path):
-    base_path = root_path + 'MARS-Net/'
-    ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_test/mask_processed/'
-    img_root_path = base_path + 'assets/FNA/FNA_test/img/'
-    if 'faster' in model_type:
-        # img_root_path = base_path + 'FNA/assets/all-patients/img/'
-        # img_root_path = base_path + 'tensorflowAPI/research/object_detection/dataset_tools/assets/images_test/'
-        load_path = f'{root_path}/FNA/generated/'
-
-    else:
-        # ground_truth_mask_root_path = base_path + 'assets/FNA/FNA_valid_fold0/mask_processed/'
-        # img_root_path = base_path + 'assets/FNA/FNA_valid_fold0/img/'
-        # load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256/FNA_valid_fold0/frame2_A_repeat0/'
-        load_path = base_path + 'models/results/predict_wholeframe_round1_FNA_VGG19_MTL_auto_reg_aut_input256_patience_10/FNA_test/frame2_training_repeat0/'
-
-    save_base_path = f'{load_path}/bootstrapped_{model_type}/'
-    if os.path.isdir(save_base_path) is False:
-        os.mkdir(save_base_path)
-
-    return ground_truth_mask_root_path, img_root_path, load_path, save_base_path
-
-
 def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path):
     test_image_names = get_files_in_folder(img_root_path)
     test_image_names.sort()
@@ -114,7 +92,7 @@ def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, 
     # run_cam(model_type, img_root_path)
 
 
-def run_eval_final(root_path):
+def run_eval_final(root_path, save_path):
     '''
     Here is the brief explanation of evaluation functions called in run_eval_final()
 
@@ -126,81 +104,165 @@ def run_eval_final(root_path):
     :return:
     '''
 
-    # get MTL boxes
-    model_type = 'MTL_auto_reg_aut'  # MTL model with classification and segmentation branches only
-    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type, root_path)
-    ground_truth_box_load_path = f'{root_path}/FNA/generated/'
-    # ground_truth_boxes = np.load(f"{ground_truth_box_load_path}/ground_truth_boxes.npy", allow_pickle=True)
-    mtl_prediction_images_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
-    list_of_ground_truth_polygons = convert_mask_to_polygon(ground_truth_mask_root_path)
+    for a_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
+        
+        # ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/all/mask_processed/'
+        # img_root_path = f'{root_path}MARS-Net/assets/FNA/all/img/'
 
-    # get Faster R-CNN boxes
-    model_type = 'faster_640'
-    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type, root_path)
-    faster_rcnn_prediction_images_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
+        ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{a_index}/mask_processed/'
+        img_root_path = f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{a_index}/img/'
+        
+        mtl_model_type = 'MTL_auto_reg_aut'  # MTL model with classification and segmentation branches only
+        MLT_load_path = f'{root_path}MARS-Net/models/results/predict_wholeframe_round1_FNA_CV_VGG19_{mtl_model_type}_input256_patience_10/'
 
-    test_image_names = get_files_in_folder(img_root_path)
-    test_image_names.sort()
-    test_images_by_subject = get_images_by_subject(test_image_names)
-    print_images_by_subject_statistics(test_images_by_subject)
+        faster_rcnn_model_type = 'faster_640'
+        faster_rcnn_load_path = f'{root_path}/FNA/assets/{faster_rcnn_model_type}_boxes/'
 
-    # bootstrap data and count Follicular Clusters in each bootstrap sample
-    img_path = os.path.join(img_root_path, test_image_names[0])
-    img = Image.open(img_path)  # load images from paths
-    img_size = {}
-    img_size['height'], img_size['width'] = img.size
+        mtl_prediction_images_boxes = {}
+        faster_rcnn_prediction_images_boxes = {}
+        # get MTL boxes
+        # mtl_prediction_images_boxes = np.load(f"{MLT_load_path}/{mtl_model_type}_boxes.npy", allow_pickle=True)
+        temp_mtl_prediction_image_names = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/image_filenames.npy", allow_pickle=True)
+        temp_mtl_prediction_images_boxes = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/pred_boxes.npy", allow_pickle=True)
+        temp_mtl_prediction_images_boxes = temp_mtl_prediction_images_boxes.item()
 
-    ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
-    ground_truth_mask_names.sort()
+        # get Faster R-CNN boxes
+        # faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_boxes.npy", allow_pickle=True)
+        temp_faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_10{a_index}_boxes.npy", allow_pickle=True)
+        temp_faster_rcnn_prediction_images_boxes = temp_faster_rcnn_prediction_images_boxes.item()
 
-    # --------------------- Data Loading and preparation above ---------------------------------------
+        for mtl_index in range(len(temp_mtl_prediction_images_boxes)):
+            mtl_prediction_images_boxes[f"{temp_mtl_prediction_image_names[mtl_index]}.png"] = temp_mtl_prediction_images_boxes[mtl_index]
+        
+        for image_name, image_boxes in temp_faster_rcnn_prediction_images_boxes.items():
+            faster_rcnn_prediction_images_boxes[image_name] = image_boxes
 
-    # model_type options: 'faster-rcnn_overlap', 'MTL_overlap', 'MTL_faster-rcnn_overlap'
-    ground_truth_min_follicular = 15  # can be changed to 6 or etc.
-    # -------------------- Polygon Visualization -----------------------------
-    for model_type in ['faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 
-        save_base_path = f"{load_path}/{model_type}_polygon/"
-        visualizer = Visualizer()
-        visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
-                                                                     list_of_ground_truth_polygons, mtl_prediction_images_boxes,
-                                                                     faster_rcnn_prediction_images_boxes, model_type)
+        # remove two names from the faster_rcnn_prediction_images_boxes in the last index
+        faster_rcnn_names = list(faster_rcnn_prediction_images_boxes.keys())
+        mtl_names = list(mtl_prediction_images_boxes.keys())
+        mismatch_names = list(set(faster_rcnn_names) - set(mtl_names))
+        if len(mismatch_names) > 0:
+            print('mismatch names:', mismatch_names)
+            for a_mismatch_name in mismatch_names:
+                del faster_rcnn_prediction_images_boxes[a_mismatch_name]
+        
+        faster_rcnn_names = list(faster_rcnn_prediction_images_boxes.keys())
+        mtl_names = list(mtl_prediction_images_boxes.keys())
 
-        # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
-        bootstrap_model_type = f'bootstrapped_{model_type}'
-        save_base_path = f"{load_path}/{bootstrap_model_type}_polygon/"
+        assert len(mtl_prediction_images_boxes) == len(faster_rcnn_prediction_images_boxes)
+        assert len(mtl_prediction_images_boxes) == len( set(list(faster_rcnn_prediction_images_boxes.keys()) + list(mtl_prediction_images_boxes.keys())) ) 
 
-        bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
-                                     list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
+        # mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes = aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path, faster_rcnn_load_path, faster_rcnn_model_type)
+        # -----------------------------------------------------------------------------------------------------------
 
-        bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
-        bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+        list_of_ground_truth_polygons = convert_mask_to_polygon(ground_truth_mask_root_path)
 
-    # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
-    # save_base_path1 = f"{load_path}/bootstrapped_MTL_overlap_polygon/"
-    # save_base_path2 = f"{load_path}/bootstrapped_faster-rcnn_overlap_polygon/"
-    # save_base_path3 = f"{load_path}/bootstrapped_MTL_faster-rcnn_overlap_polygon/"
-    # save_base_path = f"{load_path}/bootstrapped_compare_precision_recall_polygon/"
-    # if os.path.isdir(save_base_path) is False:
-    #     os.mkdir(save_base_path)
+        test_image_names = get_files_in_folder(img_root_path)
+        test_image_names.sort()
+        test_images_by_subject = get_images_by_subject(test_image_names)
+        print_images_by_subject_statistics(test_images_by_subject)
 
-    # bootstrapped_df1 = pd.read_csv(f'{save_base_path1}bootstrapped_df.csv', header=None)
-    # bootstrapped_df2 = pd.read_csv(f'{save_base_path2}bootstrapped_df.csv', header=None)
-    # bootstrapped_df3 = pd.read_csv(f'{save_base_path3}bootstrapped_df.csv', header=None)
+        # bootstrap data and count Follicular Clusters in each bootstrap sample
+        img_path = os.path.join(img_root_path, test_image_names[0])
+        img = Image.open(img_path)  # load images from paths
+        img_size = {}
+        img_size['height'], img_size['width'] = img.size
 
-    # bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3,
-    #                                             ground_truth_min_follicular, save_base_path)
+        ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
+        ground_truth_mask_names.sort()
+
+        # --------------------- Data Loading and preparation above ---------------------------------------
+
+        # model_type options: 'faster-rcnn_overlap', 'MTL_overlap', 'MTL_faster-rcnn_overlap'
+        ground_truth_min_follicular = 15  # can be changed to 6 or etc.
+        # -------------------- Polygon Visualization -----------------------------
+        for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap'
+            save_base_path = f"{save_path}{model_type}_polygon_{a_index}/"
+
+            visualizer = Visualizer()
+            precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
+                                                                        list_of_ground_truth_polygons, mtl_prediction_images_boxes,
+                                                                        faster_rcnn_prediction_images_boxes, model_type)
+
+            # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
+            # bootstrap_model_type = f'bootstrapped_{model_type}'
+            # save_base_path = f"{save_path}{bootstrap_model_type}_polygon/"
+
+            # bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
+            #                              list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
+
+            # bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
+            # bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+
+        # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
+        # save_base_path1 = f"{save_path}bootstrapped_MTL_overlap_polygon/"
+        # save_base_path2 = f"{save_path}bootstrapped_faster-rcnn_overlap_polygon/"
+        # save_base_path3 = f"{save_path}bootstrapped_MTL_faster-rcnn_overlap_polygon/"
+        # save_base_path = f"{save_path}bootstrapped_compare_precision_recall_polygon/"
+        # if os.path.isdir(save_base_path) is False:
+        #     os.mkdir(save_base_path)
+
+        # bootstrapped_df1 = pd.read_csv(f'{save_base_path1}bootstrapped_df.csv', header=None)
+        # bootstrapped_df2 = pd.read_csv(f'{save_base_path2}bootstrapped_df.csv', header=None)
+        # bootstrapped_df3 = pd.read_csv(f'{save_base_path3}bootstrapped_df.csv', header=None)
+
+        # bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3,
+        #                                             ground_truth_min_follicular, save_base_path)
+
+
+def aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path, faster_rcnn_load_path, faster_rcnn_model_type):
+    mtl_prediction_images_boxes = {}
+    faster_rcnn_prediction_images_boxes = {}
+    for a_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
+        # get MTL boxes
+        # mtl_prediction_images_boxes = np.load(f"{MLT_load_path}/{mtl_model_type}_boxes.npy", allow_pickle=True)
+        temp_mtl_prediction_image_names = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/image_filenames.npy", allow_pickle=True)
+        temp_mtl_prediction_images_boxes = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/pred_boxes.npy", allow_pickle=True)
+        temp_mtl_prediction_images_boxes = temp_mtl_prediction_images_boxes.item()
+
+        # get Faster R-CNN boxes
+        # faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_boxes.npy", allow_pickle=True)
+        temp_faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_10{a_index}_boxes.npy", allow_pickle=True)
+        temp_faster_rcnn_prediction_images_boxes = temp_faster_rcnn_prediction_images_boxes.item()
+
+        for mtl_index in range(len(temp_mtl_prediction_images_boxes)):
+            mtl_prediction_images_boxes[f"{temp_mtl_prediction_image_names[mtl_index]}.png"] = temp_mtl_prediction_images_boxes[mtl_index]
+        
+        for image_name, image_boxes in temp_faster_rcnn_prediction_images_boxes.items():
+            faster_rcnn_prediction_images_boxes[image_name] = image_boxes
+
+        # remove two names from the faster_rcnn_prediction_images_boxes in the last index
+        faster_rcnn_names = list(faster_rcnn_prediction_images_boxes.keys())
+        mtl_names = list(mtl_prediction_images_boxes.keys())
+        mismatch_names = list(set(faster_rcnn_names) - set(mtl_names))
+        if len(mismatch_names) > 0:
+            print('mismatch names:', mismatch_names)
+            for a_mismatch_name in mismatch_names:
+                del faster_rcnn_prediction_images_boxes[a_mismatch_name]
+        
+        
+        faster_rcnn_names = list(faster_rcnn_prediction_images_boxes.keys())
+        mtl_names = list(mtl_prediction_images_boxes.keys())
+        print('faster', len(faster_rcnn_names), 'mtl', len(mtl_names))
+
+        assert len(mtl_prediction_images_boxes) == len(faster_rcnn_prediction_images_boxes)
+        assert len(mtl_prediction_images_boxes) == len( set(list(faster_rcnn_prediction_images_boxes.keys()) + list(mtl_prediction_images_boxes.keys())) ) 
+
+    return mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes
+
 
 
 if __name__ == "__main__":
     # root_path = 'C:/Users/JunbongJang/PycharmProjects/'  
     root_path = 'C:/Users/Jun/Documents/PycharmProjects/'
+    save_path = f"{root_path}FNA/generated/CV_7folds/"
 
     # model_type = 'faster_640'
     # model_type = 'MTL_auto_reg_aut'
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    run_eval_final(root_path)
+    run_eval_final(root_path, save_path)
 
     # Visualizer().manuscript_draw_comparison_bar_graph()
 

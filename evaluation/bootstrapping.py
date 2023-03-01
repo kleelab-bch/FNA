@@ -257,7 +257,7 @@ def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, gro
                                  mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, bootstrap_repetition_num):
 
     if os.path.isdir(save_base_path) is False:
-        os.mkdir(save_base_path)
+        os.makedirs(save_base_path)
     print('save_base_path', save_base_path)
 
     image_name_to_index = {}
@@ -289,11 +289,11 @@ def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, gro
             img = Image.open(img_path)  # load images from paths
 
             one_ground_truth_polygons = list_of_ground_truth_polygons[image_name_to_index[filename]]
-            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename].copy()
+            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes[filename].copy()
 
             faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:, 0] * img.height, faster_rcnn_predicted_boxes[:, 2] * img.height  # 1944
             faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:, 1] * img.width, faster_rcnn_predicted_boxes[:, 3] * img.width  # 2592
-            mtl_predicted_boxes = mtl_prediction_images_boxes.item()[image_name_to_index[filename]]
+            mtl_predicted_boxes = mtl_prediction_images_boxes[filename]
 
             if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
                 # if there is at least one prediction or ground truth box in the image

@@ -388,8 +388,12 @@ class Visualizer:
 
     def overlay_two_model_overlapped_polygons_over_images(self, save_base_path, img_root_path, mask_names, list_of_ground_truth_polygons,
                                                           mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type):
+        '''
+        In addition to drawing the intersection of predicitons from two models, 
+        evaluate the performance in f1, precision and recall statistics
+        '''
         if os.path.isdir(save_base_path) is False:
-            os.mkdir(save_base_path)
+            os.makedirs(save_base_path)
         print('save_base_path', save_base_path)
 
         total_false_negative = 0
@@ -404,16 +408,16 @@ class Visualizer:
             one_ground_truth_polygons = list_of_ground_truth_polygons[idx]
 
             # one_ground_truth_polygons = ground_truth_boxes.item()[orig_filename]
-            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename].copy()
+            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes[filename].copy()
 
             faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,0] *img.height, faster_rcnn_predicted_boxes[:,2] *img.height  # 1944
             faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:,1] *img.width, faster_rcnn_predicted_boxes[:,3] *img.width  # 2592
 
-            mtl_predicted_boxes = mtl_prediction_images_boxes.item()[idx]
+            mtl_predicted_boxes = mtl_prediction_images_boxes[filename].copy()
 
             if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
                 # if there is at least one prediction or ground truth box in the image
-
+                
                 # convert MTL boxes to polygons
                 # convert Faster R-CNN boxes to polygons
                 # convert ground truth boxes to polygons
@@ -443,18 +447,17 @@ class Visualizer:
                     overlapped_final_polygon = MultiPolygon(polygon_list)  # convert to multipolygon
 
                 # ------------------ IOU ---------------------
-                if mtl_predicted_boxes.shape[0] > 0 and faster_rcnn_predicted_boxes.shape[0] > 0:
+                if mtl_predicted_boxes.shape[0] > 0 and faster_rcnn_predicted_boxes.shape[0] > 0 and \
+                    not one_ground_truth_polygons.is_empty and not overlapped_prediction_polygon.is_empty:
                     iou = calc_iou(one_ground_truth_polygons, overlapped_prediction_polygon)
                     total_iou = total_iou + iou
                     iou_counter = iou_counter + 1
-                    print(iou)
 
                 # ---------------- Count overlapped polygons --------------------
                 gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons,
                                                                                                       overlapped_prediction_polygon)
-                if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
-                    print(idx, filename)
-                    print(gt_overlaps, false_negative, false_positive)
+                # if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
+                # print(idx, filename, ' :  gt_overlaps', gt_overlaps, 'fn', false_negative, 'fp', false_positive)
                 total_gt_overlaps = total_gt_overlaps + gt_overlaps
                 total_false_negative = total_false_negative + false_negative
                 total_false_positive = total_false_positive + false_positive
@@ -464,9 +467,11 @@ class Visualizer:
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_prediction_polygon, (0, 255, 0), True)
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_final_polygon, (255, 255, 0), True)
                 save_filename = save_base_path + filename
-                overlaid_img.save(save_filename)
+                # overlaid_img.save(save_filename)
 
             # evaluate by F1, Precision and Recall
+        print('-------------------')
+        print('model_type', model_type)
         print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
         precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
         recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
@@ -476,15 +481,18 @@ class Visualizer:
         print('f1:', round(f1, 3))
         print('total_iou:', round(total_iou/iou_counter,3))
 
-        print('model_type', model_type)
-        if model_type == 'faster-rcnn_overlap':
-            assert total_gt_overlaps == 16
-            assert total_false_positive == 6
-            assert total_false_negative == 21
-        elif model_type == 'MTL_faster-rcnn_overlap':
-            assert total_gt_overlaps == 16
-            assert total_false_positive == 3
-            assert total_false_negative == 21
+        # sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
+        # if model_type == 'faster-rcnn_overlap':
+        #     assert total_gt_overlaps == 16
+        #     assert total_false_positive == 6
+        #     assert total_false_negative == 21
+        # elif model_type == 'MTL_faster-rcnn_overlap':
+        #     assert total_gt_overlaps == 16
+        #     assert total_false_positive == 3
+        #     assert total_false_negative == 21
+
+        return precision, recall, f1, total_iou/iou_counter
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, model_type):
