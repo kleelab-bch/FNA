@@ -33,12 +33,16 @@ import shapely
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 
+import seaborn as sns
+import pandas as pd
+
 from matplotlib import rcParams
 rcParams['font.family'] = 'sans-serif'
 rcParams['font.sans-serif'] = ['Arial']
 
 font = {'size':'11', 'weight':'normal',}
 matplotlib.rc('font', **font)
+
 
 class Visualizer:
     def __init__(self):
@@ -570,13 +574,14 @@ class Visualizer:
         cv2.imwrite(f'{save_path}heatmap_{image_name}', heatmap_img)
 
 
-    def manuscript_draw_comparison_bar_graph(self):
+    def manuscript_draw_comparison_bar_graph_with_errors(self, save_path, summary_eval_dict):
         # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
 
-        import seaborn as sns
-        import pandas as pd
         sns.set_theme(style="whitegrid")
-        list_of_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
+        # list_of_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
+        #         ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
+        #         ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
+        list_of_list = [[0.1486, 0.6080, 0.4500, 0.5058, 0.2497, 0.3276, 0.5007, 0.3552, 0.2902, 0.6874, 0.3008, 0.4131],
                 ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
                 ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
 
@@ -584,8 +589,30 @@ class Visualizer:
         transposed_list_of_list = np.array(list_of_list).T.tolist()
         df = pd.DataFrame(transposed_list_of_list, columns=['val', 'metric', 'model'])
         df["val"] = pd.to_numeric(df["val"])
+        
+        fig, ax = plt.subplots(constrained_layout=True)
+
         sns.barplot(x="metric", y="val", hue="model", data=df)
+        ax.set_ylim(0, 1.2)
+        ax.legend(loc='upper left')
+        
+        # dicts with errors
+        iou_error = {0.1486:0.046824750243122874,0.2497:0.06494991166985277, 0.2902:0.09410608818186629}
+        precision_error = {0.6080:0.22494560274141923, 0.3276:0.1983430418867766, 0.6874:0.25833208685863934}
+        recall_error = {0.4500:0.18676425172882047, 0.5007:0.08396270727752463, 0.3008:0.13788650863512383}
+        f1_error = {0.5058:0.1780586145725063, 0.3552:0.10321065268302565, 0.4131:0.1698763900930889}
 
-        plt.savefig("../generated/manuscript/bar_graph_comparison.svg")
+        # combine them; providing all the keys are unique
+        z = {**iou_error, **precision_error, **recall_error, **f1_error}
 
+        for p in ax.patches:
+            x = p.get_x()  # get the bottom left x corner of the bar
+            w = p.get_width()  # get width of bar
+            h = p.get_height()  # get height of bar
+            error_offset_y = z[h]
+            plt.vlines(x+w/2, h-error_offset_y, h+error_offset_y, color='k')  # draw a vertical line
 
+        save_base_path = f"{save_path}manuscript/"
+        if os.path.isdir(save_base_path) is False:
+            os.makedirs(save_base_path)
+        plt.savefig(f"{save_base_path}bar_graph_comparison.svg")

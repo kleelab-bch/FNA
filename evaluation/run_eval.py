@@ -12,6 +12,8 @@ from PIL import Image
 from visualizer import Visualizer
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
 from bootstrapping import bootstrap_analysis, bootstrap_analysis_compare_precision_recall, bootstrap_data, bootstrap_two_model_polygons
+import json
+import scipy
 
 def convert_mask_to_box(ground_truth_mask_root_path):
     ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
@@ -103,14 +105,14 @@ def run_eval_final(root_path, save_path):
 
     :return:
     '''
-
-    for a_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
+    evaluation_dict = {}
+    for fold_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
         
         # ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/all/mask_processed/'
         # img_root_path = f'{root_path}MARS-Net/assets/FNA/all/img/'
 
-        ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{a_index}/mask_processed/'
-        img_root_path = f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{a_index}/img/'
+        ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/mask_processed/'
+        img_root_path = f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/img/'
         
         mtl_model_type = 'MTL_auto_reg_aut'  # MTL model with classification and segmentation branches only
         MLT_load_path = f'{root_path}MARS-Net/models/results/predict_wholeframe_round1_FNA_CV_VGG19_{mtl_model_type}_input256_patience_10/'
@@ -122,13 +124,13 @@ def run_eval_final(root_path, save_path):
         faster_rcnn_prediction_images_boxes = {}
         # get MTL boxes
         # mtl_prediction_images_boxes = np.load(f"{MLT_load_path}/{mtl_model_type}_boxes.npy", allow_pickle=True)
-        temp_mtl_prediction_image_names = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/image_filenames.npy", allow_pickle=True)
-        temp_mtl_prediction_images_boxes = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/pred_boxes.npy", allow_pickle=True)
+        temp_mtl_prediction_image_names = np.load(f"{MLT_load_path}FNA_valid_fold{fold_index}/frame2_{a_letter}_repeat0/image_filenames.npy", allow_pickle=True)
+        temp_mtl_prediction_images_boxes = np.load(f"{MLT_load_path}FNA_valid_fold{fold_index}/frame2_{a_letter}_repeat0/pred_boxes.npy", allow_pickle=True)
         temp_mtl_prediction_images_boxes = temp_mtl_prediction_images_boxes.item()
 
         # get Faster R-CNN boxes
         # faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_boxes.npy", allow_pickle=True)
-        temp_faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_10{a_index}_boxes.npy", allow_pickle=True)
+        temp_faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_10{fold_index}_boxes.npy", allow_pickle=True)
         temp_faster_rcnn_prediction_images_boxes = temp_faster_rcnn_prediction_images_boxes.item()
 
         for mtl_index in range(len(temp_mtl_prediction_images_boxes)):
@@ -177,13 +179,14 @@ def run_eval_final(root_path, save_path):
         ground_truth_min_follicular = 15  # can be changed to 6 or etc.
         # -------------------- Polygon Visualization -----------------------------
         for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap'
-            save_base_path = f"{save_path}{model_type}_polygon_{a_index}/"
+            save_base_path = f"{save_path}{model_type}_polygon_{fold_index}/"
 
             visualizer = Visualizer()
             precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
                                                                         list_of_ground_truth_polygons, mtl_prediction_images_boxes,
                                                                         faster_rcnn_prediction_images_boxes, model_type)
 
+            evaluation_dict[f'fold{fold_index}_{model_type}'] = {'precision': precision, 'recall': recall, 'f1': f1, 'iou': iou}
             # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
             # bootstrap_model_type = f'bootstrapped_{model_type}'
             # save_base_path = f"{save_path}{bootstrap_model_type}_polygon/"
@@ -209,20 +212,23 @@ def run_eval_final(root_path, save_path):
         # bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3,
         #                                             ground_truth_min_follicular, save_base_path)
 
+    
+    json.dump( evaluation_dict, open( f"{save_path}evaluation_statistics.json", 'w' ) )
 
+    
 def aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path, faster_rcnn_load_path, faster_rcnn_model_type):
     mtl_prediction_images_boxes = {}
     faster_rcnn_prediction_images_boxes = {}
-    for a_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
+    for fold_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
         # get MTL boxes
         # mtl_prediction_images_boxes = np.load(f"{MLT_load_path}/{mtl_model_type}_boxes.npy", allow_pickle=True)
-        temp_mtl_prediction_image_names = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/image_filenames.npy", allow_pickle=True)
-        temp_mtl_prediction_images_boxes = np.load(f"{MLT_load_path}FNA_valid_fold{a_index}/frame2_{a_letter}_repeat0/pred_boxes.npy", allow_pickle=True)
+        temp_mtl_prediction_image_names = np.load(f"{MLT_load_path}FNA_valid_fold{fold_index}/frame2_{a_letter}_repeat0/image_filenames.npy", allow_pickle=True)
+        temp_mtl_prediction_images_boxes = np.load(f"{MLT_load_path}FNA_valid_fold{fold_index}/frame2_{a_letter}_repeat0/pred_boxes.npy", allow_pickle=True)
         temp_mtl_prediction_images_boxes = temp_mtl_prediction_images_boxes.item()
 
         # get Faster R-CNN boxes
         # faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_boxes.npy", allow_pickle=True)
-        temp_faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_10{a_index}_boxes.npy", allow_pickle=True)
+        temp_faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_10{fold_index}_boxes.npy", allow_pickle=True)
         temp_faster_rcnn_prediction_images_boxes = temp_faster_rcnn_prediction_images_boxes.item()
 
         for mtl_index in range(len(temp_mtl_prediction_images_boxes)):
@@ -250,6 +256,56 @@ def aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path,
 
     return mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes
 
+def print_eval_final(save_path):
+
+    evaluation_dict = json.load( open( f"{save_path}evaluation_statistics.json", 'r' ) )
+
+    summary_eval_dict = {}
+    print('------------------- Print Statistics -------------------')
+    for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:
+        print(model_type)
+        for metric_name in ['precision', 'recall', 'f1', 'iou']:
+            metric_value_list = []
+            for a_fold_index in range(7):
+                metric_value_list.append(evaluation_dict[f'fold{a_fold_index}_{model_type}'][metric_name])
+                
+            np_metric_value = np.array(metric_value_list)
+            print(metric_name, '     avg:', np.mean(np_metric_value), '   std:', np.std(np_metric_value))
+
+            if model_type not in summary_eval_dict.keys():
+                summary_eval_dict[model_type] = {metric_name: np_metric_value }
+            else:
+                summary_eval_dict[model_type][metric_name] = np_metric_value
+        print('--------------')
+    
+    
+    print('------------------- Hypothesis Testings -------------------')
+    print('MTL vs. Faster R-CNN')
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['precision'], summary_eval_dict['faster-rcnn_overlap']['precision'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['recall'], summary_eval_dict['faster-rcnn_overlap']['recall'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['f1'], summary_eval_dict['faster-rcnn_overlap']['f1'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['iou'], summary_eval_dict['faster-rcnn_overlap']['iou'])
+
+    print('MTL vs. FNA-Net')
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['precision'], summary_eval_dict['MTL_faster-rcnn_overlap']['precision'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['recall'], summary_eval_dict['MTL_faster-rcnn_overlap']['recall'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['f1'], summary_eval_dict['MTL_faster-rcnn_overlap']['f1'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['iou'], summary_eval_dict['MTL_faster-rcnn_overlap']['iou'])
+
+    print('Faster R-CNN vs. FNA-Net')
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['precision'], summary_eval_dict['MTL_faster-rcnn_overlap']['precision'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['recall'], summary_eval_dict['MTL_faster-rcnn_overlap']['recall'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['f1'], summary_eval_dict['MTL_faster-rcnn_overlap']['f1'])
+    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['iou'], summary_eval_dict['MTL_faster-rcnn_overlap']['iou'])
+
+    Visualizer().manuscript_draw_comparison_bar_graph_with_errors(save_path, summary_eval_dict)
+
+
+def perform_wilcoxon_signed_rank_sum_test(first_list, second_list):
+    # ttest_rel or wilcoxon does not change the p-value much either and accept/reject results do not change
+    res = scipy.stats.wilcoxon(first_list, second_list)
+
+    print('p', res.pvalue, '  statistic', res.statistic)
 
 
 if __name__ == "__main__":
@@ -262,7 +318,6 @@ if __name__ == "__main__":
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    run_eval_final(root_path, save_path)
-
-    # Visualizer().manuscript_draw_comparison_bar_graph()
+    # run_eval_final(root_path, save_path)
+    print_eval_final(save_path)
 
