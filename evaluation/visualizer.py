@@ -26,6 +26,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 from scipy import ndimage
 from calc_polygon import *
+from sklearn.metrics import auc
 
 import rasterio
 from rasterio import features
@@ -391,7 +392,7 @@ class Visualizer:
 
 
     def overlay_two_model_overlapped_polygons_over_images(self, save_base_path, img_root_path, mask_names, list_of_ground_truth_polygons,
-                                                          mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type):
+                                                          mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold):
         '''
         In addition to drawing the intersection of predicitons from two models, 
         evaluate the performance in f1, precision and recall statistics
@@ -459,7 +460,8 @@ class Visualizer:
 
                 # ---------------- Count overlapped polygons --------------------
                 gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons,
-                                                                                                      overlapped_prediction_polygon)
+                                                                                                      overlapped_prediction_polygon,
+                                                                                                      overlap_area_threshold)
                 # if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
                 # print(idx, filename, ' :  gt_overlaps', gt_overlaps, 'fn', false_negative, 'fp', false_positive)
                 total_gt_overlaps = total_gt_overlaps + gt_overlaps
@@ -476,10 +478,14 @@ class Visualizer:
             # evaluate by F1, Precision and Recall
         print('-------------------')
         print('model_type', model_type)
+        print('overlap_area_threshold', overlap_area_threshold)
         print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
         precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
         recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
-        f1 = 2 * precision * recall / (precision + recall)
+        if (precision + recall) > 0:
+            f1 = 2 * precision * recall / (precision + recall)
+        else:
+            f1 = 0
         print('precision:', round(precision, 3))
         print('recall:', round(recall, 3))
         print('f1:', round(f1, 3))
@@ -572,6 +578,37 @@ class Visualizer:
         alpha = 0.6
         heatmap_img = cv2.addWeighted(image, alpha, heatmap, 1 - alpha, 0)
         cv2.imwrite(f'{save_path}heatmap_{image_name}', heatmap_img)
+
+
+    def helper_plot_precision_recall_curve_at_thresholds(self, precision_list, recall_list, label_string):
+
+        # sort them
+        recall_sort_index = np.argsort(recall_list)
+        precision_list = [precision_list[i] for i in recall_sort_index]
+        recall_list = [recall_list[i] for i in recall_sort_index]
+
+        lr_auc = auc(recall_list, precision_list)
+
+        plt.plot(recall_list, precision_list, marker='.',
+                label=f'{label_string}\nAUC={round(lr_auc, 3)}', lw=2)
+
+    
+    def plot_precision_recall_curve_at_thresholds(self, precision_list, recall_list, label_string, save_base_path):
+        self.helper_plot_precision_recall_curve_at_thresholds(precision_list, recall_list, label_string)
+
+        # plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
+        plt.xlabel('Recall', fontsize='large')
+        plt.ylabel('Precision', fontsize='large')
+
+        plt.xlim(left=0, right=1.02)
+        plt.ylim(bottom=0)
+        plt.legend()
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.grid(True)
+
+        plt.savefig(save_base_path + f'precision_recall_curve_at_thresholds.svg')
+        plt.close()
 
 
     def manuscript_draw_comparison_bar_graph_with_errors(self, save_path, summary_eval_dict):

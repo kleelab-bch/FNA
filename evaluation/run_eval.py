@@ -12,6 +12,7 @@ from PIL import Image
 from visualizer import Visualizer
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
 from bootstrapping import bootstrap_analysis, bootstrap_analysis_compare_precision_recall, bootstrap_data, bootstrap_two_model_polygons
+from bootstrapping_visualization import plot_performance_at_thresholds
 import json
 import scipy
 
@@ -106,6 +107,7 @@ def run_eval_final(root_path, save_path):
     :return:
     '''
     evaluation_dict = {}
+    visualizer = Visualizer()
     for fold_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
         
         # ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/all/mask_processed/'
@@ -181,10 +183,22 @@ def run_eval_final(root_path, save_path):
         for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap'
             save_base_path = f"{save_path}{model_type}_polygon_{fold_index}/"
 
-            visualizer = Visualizer()
+            # precision_list = []
+            # recall_list = []
+            # overlap_area_threshold_list = []
+            # f1_list = []
+            # for overlap_area_threshold in np.linspace(0, 1, 21, endpoint=True):
+            overlap_area_threshold = 0
             precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
                                                                         list_of_ground_truth_polygons, mtl_prediction_images_boxes,
-                                                                        faster_rcnn_prediction_images_boxes, model_type)
+                                                                        faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold)
+            # overlap_area_threshold_list.append(overlap_area_threshold)
+            # precision_list.append(precision)
+            # recall_list.append(recall)
+            # f1_list.append(f1)
+
+            # visualizer.plot_precision_recall_curve_at_thresholds(precision_list, recall_list, model_type, save_base_path)
+            # plot_performance_at_thresholds(overlap_area_threshold_list, precision_list, recall_list, f1_list, 0, save_base_path)
 
             evaluation_dict[f'fold{fold_index}_{model_type}'] = {'precision': precision, 'recall': recall, 'f1': f1, 'iou': iou}
             # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
@@ -318,6 +332,6 @@ if __name__ == "__main__":
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    # run_eval_final(root_path, save_path)
+    run_eval_final(root_path, save_path)
     print_eval_final(save_path)
 
