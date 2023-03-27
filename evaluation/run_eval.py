@@ -136,8 +136,10 @@ def run_eval_final(root_path):
 
     # get Faster R-CNN boxes
     model_type = 'faster_640'
-    ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type, root_path)
+    ground_truth_mask_root_path, img_root_path2, load_path, save_base_path = get_data_path(model_type, root_path)
     faster_rcnn_prediction_images_boxes = np.load(f"{load_path}/{model_type}_boxes.npy", allow_pickle=True)
+
+    # TODO assert img_root_path == img_root_path2
 
     test_image_names = get_files_in_folder(img_root_path)
     test_image_names.sort()
@@ -166,14 +168,14 @@ def run_eval_final(root_path):
                                                                      faster_rcnn_prediction_images_boxes, model_type)
 
         # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
-        bootstrap_model_type = f'bootstrapped_{model_type}'
-        save_base_path = f"{load_path}/{bootstrap_model_type}_polygon/"
+        # bootstrap_model_type = f'bootstrapped_{model_type}'
+        # save_base_path = f"{load_path}/{bootstrap_model_type}_polygon/"
 
-        bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
-                                     list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
+        # bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
+        #                              list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
 
-        bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
-        bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+        # bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
+        # bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
 
     # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
     # save_base_path1 = f"{load_path}/bootstrapped_MTL_overlap_polygon/"

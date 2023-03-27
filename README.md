@@ -88,7 +88,7 @@ This section calculates the area overlap between the ground truth mask and the p
 visualizes follicular cluster detection results per image. 
 Also, it performs the hierarchical bootstrapping and visualizes its summary statistics and precision-recall curves of models.
 
-* In the evaluation/run_eval.py, edit the root_path variable to a user's FNA-Net project path in line 196.
-* In the command prompt or terminal based on the user's operating systems, run  
-  * evaluation/run_eval.py
+* In the evaluation/run_eval.py, edit the root_path variable to a user's FNA-Net project path under if __name__ == "__main__".
+* In the command prompt or terminal based on the user's operating systems, type  
+  >python evaluation/run_eval.py
 * Then, the results are generated in the evaluation/generated folder
