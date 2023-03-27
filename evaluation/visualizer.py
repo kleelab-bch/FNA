@@ -26,6 +26,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 from scipy import ndimage
 from calc_polygon import *
+from sklearn.metrics import auc
 
 import rasterio
 from rasterio import features
@@ -33,12 +34,16 @@ import shapely
 from shapely.geometry import Point, Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 
+import seaborn as sns
+import pandas as pd
+
 from matplotlib import rcParams
 rcParams['font.family'] = 'sans-serif'
 rcParams['font.sans-serif'] = ['Arial']
 
 font = {'size':'11', 'weight':'normal',}
 matplotlib.rc('font', **font)
+
 
 class Visualizer:
     def __init__(self):
@@ -387,9 +392,13 @@ class Visualizer:
 
 
     def overlay_two_model_overlapped_polygons_over_images(self, save_base_path, img_root_path, mask_names, list_of_ground_truth_polygons,
-                                                          mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type):
+                                                          mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold):
+        '''
+        In addition to drawing the intersection of predicitons from two models, 
+        evaluate the performance in f1, precision and recall statistics
+        '''
         if os.path.isdir(save_base_path) is False:
-            os.mkdir(save_base_path)
+            os.makedirs(save_base_path)
         print('save_base_path', save_base_path)
 
         total_false_negative = 0
@@ -404,16 +413,16 @@ class Visualizer:
             one_ground_truth_polygons = list_of_ground_truth_polygons[idx]
 
             # one_ground_truth_polygons = ground_truth_boxes.item()[orig_filename]
-            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes.item()[filename].copy()
+            faster_rcnn_predicted_boxes = faster_rcnn_prediction_images_boxes[filename].copy()
 
             faster_rcnn_predicted_boxes[:, 0], faster_rcnn_predicted_boxes[:, 2] = faster_rcnn_predicted_boxes[:,0] *img.height, faster_rcnn_predicted_boxes[:,2] *img.height  # 1944
             faster_rcnn_predicted_boxes[:, 1], faster_rcnn_predicted_boxes[:, 3] = faster_rcnn_predicted_boxes[:,1] *img.width, faster_rcnn_predicted_boxes[:,3] *img.width  # 2592
 
-            mtl_predicted_boxes = mtl_prediction_images_boxes.item()[idx]
+            mtl_predicted_boxes = mtl_prediction_images_boxes[filename].copy()
 
             if not one_ground_truth_polygons.is_empty or mtl_predicted_boxes.shape[0] > 0 or faster_rcnn_predicted_boxes.shape[0] > 0:
                 # if there is at least one prediction or ground truth box in the image
-
+                
                 # convert MTL boxes to polygons
                 # convert Faster R-CNN boxes to polygons
                 # convert ground truth boxes to polygons
@@ -443,18 +452,18 @@ class Visualizer:
                     overlapped_final_polygon = MultiPolygon(polygon_list)  # convert to multipolygon
 
                 # ------------------ IOU ---------------------
-                if mtl_predicted_boxes.shape[0] > 0 and faster_rcnn_predicted_boxes.shape[0] > 0:
+                if mtl_predicted_boxes.shape[0] > 0 and faster_rcnn_predicted_boxes.shape[0] > 0 and \
+                    not one_ground_truth_polygons.is_empty and not overlapped_prediction_polygon.is_empty:
                     iou = calc_iou(one_ground_truth_polygons, overlapped_prediction_polygon)
                     total_iou = total_iou + iou
                     iou_counter = iou_counter + 1
-                    print(iou)
 
                 # ---------------- Count overlapped polygons --------------------
                 gt_overlaps, false_negative, false_positive, gt_overlap_pair = count_overlap_polygons(one_ground_truth_polygons,
-                                                                                                      overlapped_prediction_polygon)
-                if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
-                    print(idx, filename)
-                    print(gt_overlaps, false_negative, false_positive)
+                                                                                                      overlapped_prediction_polygon,
+                                                                                                      overlap_area_threshold)
+                # if gt_overlaps > 0 or false_negative > 0 or false_positive > 0:
+                # print(idx, filename, ' :  gt_overlaps', gt_overlaps, 'fn', false_negative, 'fp', false_positive)
                 total_gt_overlaps = total_gt_overlaps + gt_overlaps
                 total_false_negative = total_false_negative + false_negative
                 total_false_positive = total_false_positive + false_positive
@@ -464,27 +473,36 @@ class Visualizer:
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_prediction_polygon, (0, 255, 0), True)
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_final_polygon, (255, 255, 0), True)
                 save_filename = save_base_path + filename
-                overlaid_img.save(save_filename)
+                # overlaid_img.save(save_filename)
 
             # evaluate by F1, Precision and Recall
+        print('-------------------')
+        print('model_type', model_type)
+        print('overlap_area_threshold', overlap_area_threshold)
         print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
         precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
         recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
-        f1 = 2 * precision * recall / (precision + recall)
+        if (precision + recall) > 0:
+            f1 = 2 * precision * recall / (precision + recall)
+        else:
+            f1 = 0
         print('precision:', round(precision, 3))
         print('recall:', round(recall, 3))
         print('f1:', round(f1, 3))
         print('total_iou:', round(total_iou/iou_counter,3))
 
-        print('model_type', model_type)
-        if model_type == 'faster-rcnn_overlap':
-            assert total_gt_overlaps == 16
-            assert total_false_positive == 6
-            assert total_false_negative == 21
-        elif model_type == 'MTL_faster-rcnn_overlap':
-            assert total_gt_overlaps == 16
-            assert total_false_positive == 3
-            assert total_false_negative == 21
+        # sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
+        # if model_type == 'faster-rcnn_overlap':
+        #     assert total_gt_overlaps == 16
+        #     assert total_false_positive == 6
+        #     assert total_false_negative == 21
+        # elif model_type == 'MTL_faster-rcnn_overlap':
+        #     assert total_gt_overlaps == 16
+        #     assert total_false_positive == 3
+        #     assert total_false_negative == 21
+
+        return precision, recall, f1, total_iou/iou_counter
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, model_type):
@@ -562,13 +580,45 @@ class Visualizer:
         cv2.imwrite(f'{save_path}heatmap_{image_name}', heatmap_img)
 
 
-    def manuscript_draw_comparison_bar_graph(self):
+    def helper_plot_precision_recall_curve_at_thresholds(self, precision_list, recall_list, label_string):
+
+        # sort them
+        recall_sort_index = np.argsort(recall_list)
+        precision_list = [precision_list[i] for i in recall_sort_index]
+        recall_list = [recall_list[i] for i in recall_sort_index]
+
+        lr_auc = auc(recall_list, precision_list)
+
+        plt.plot(recall_list, precision_list, marker='.',
+                label=f'{label_string}\nAUC={round(lr_auc, 3)}', lw=2)
+
+    
+    def plot_precision_recall_curve_at_thresholds(self, precision_list, recall_list, label_string, save_base_path):
+        self.helper_plot_precision_recall_curve_at_thresholds(precision_list, recall_list, label_string)
+
+        # plt.title('Slide Pass/Fail Precision-Recall curve', fontsize='x-large')
+        plt.xlabel('Recall', fontsize='large')
+        plt.ylabel('Precision', fontsize='large')
+
+        plt.xlim(left=0, right=1.02)
+        plt.ylim(bottom=0)
+        plt.legend()
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.grid(True)
+
+        plt.savefig(save_base_path + f'precision_recall_curve_at_thresholds.svg')
+        plt.close()
+
+
+    def manuscript_draw_comparison_bar_graph_with_errors(self, save_path, summary_eval_dict):
         # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
 
-        import seaborn as sns
-        import pandas as pd
         sns.set_theme(style="whitegrid")
-        list_of_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
+        # list_of_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
+        #         ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
+        #         ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
+        list_of_list = [[0.1486, 0.6080, 0.4500, 0.5058, 0.2497, 0.3276, 0.5007, 0.3552, 0.2902, 0.6874, 0.3008, 0.4131],
                 ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
                 ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
 
@@ -576,8 +626,30 @@ class Visualizer:
         transposed_list_of_list = np.array(list_of_list).T.tolist()
         df = pd.DataFrame(transposed_list_of_list, columns=['val', 'metric', 'model'])
         df["val"] = pd.to_numeric(df["val"])
+        
+        fig, ax = plt.subplots(constrained_layout=True)
+
         sns.barplot(x="metric", y="val", hue="model", data=df)
+        ax.set_ylim(0, 1.2)
+        ax.legend(loc='upper left')
+        
+        # dicts with errors
+        iou_error = {0.1486:0.046824750243122874,0.2497:0.06494991166985277, 0.2902:0.09410608818186629}
+        precision_error = {0.6080:0.22494560274141923, 0.3276:0.1983430418867766, 0.6874:0.25833208685863934}
+        recall_error = {0.4500:0.18676425172882047, 0.5007:0.08396270727752463, 0.3008:0.13788650863512383}
+        f1_error = {0.5058:0.1780586145725063, 0.3552:0.10321065268302565, 0.4131:0.1698763900930889}
 
-        plt.savefig("../generated/manuscript/bar_graph_comparison.svg")
+        # combine them; providing all the keys are unique
+        z = {**iou_error, **precision_error, **recall_error, **f1_error}
 
+        for p in ax.patches:
+            x = p.get_x()  # get the bottom left x corner of the bar
+            w = p.get_width()  # get width of bar
+            h = p.get_height()  # get height of bar
+            error_offset_y = z[h]
+            plt.vlines(x+w/2, h-error_offset_y, h+error_offset_y, color='k')  # draw a vertical line
 
+        save_base_path = f"{save_path}manuscript/"
+        if os.path.isdir(save_base_path) is False:
+            os.makedirs(save_base_path)
+        plt.savefig(f"{save_base_path}bar_graph_comparison.svg")
