@@ -15,6 +15,9 @@ from bootstrapping import bootstrap_analysis, bootstrap_analysis_compare_precisi
 from bootstrapping_visualization import plot_performance_at_thresholds
 import json
 import scipy
+import re
+import itertools
+
 
 def convert_mask_to_box(ground_truth_mask_root_path):
     ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
@@ -95,6 +98,87 @@ def run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, 
     # run_cam(model_type, img_root_path)
 
 
+
+def run_eval_MTL_models(root_path, save_path):
+    '''
+    run_eval_final for MTL models only, without bootstrapping analysis.
+
+    :return:
+    '''
+    evaluation_dict = {}
+    visualizer = Visualizer()
+    for fold_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
+        
+        ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/mask_processed/'
+        img_root_path = f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/img/'
+        
+        faster_rcnn_model_type = 'faster_640'
+        faster_rcnn_load_path = f'{root_path}/FNA/assets/{faster_rcnn_model_type}_boxes/'
+
+        # get Faster R-CNN boxes
+        temp_faster_rcnn_prediction_images_boxes = np.load(f"{faster_rcnn_load_path}/{faster_rcnn_model_type}_10{fold_index}_boxes.npy", allow_pickle=True)
+        temp_faster_rcnn_prediction_images_boxes = temp_faster_rcnn_prediction_images_boxes.item()
+
+        faster_rcnn_prediction_images_boxes = {}
+        for image_name, image_boxes in temp_faster_rcnn_prediction_images_boxes.items():
+            faster_rcnn_prediction_images_boxes[image_name] = image_boxes
+
+        for a_mtl_model_type in ['classifier', 'MTL_auto_aut_seg', 'MTL_auto', 'MTL_auto_reg_aut', 'MTL_auto_reg', 'MTL_auto_reg_seg', 'MTL_cls1_reg0_aut0_seg0.75']:
+            MLT_load_path = f'{root_path}MARS-Net/models/results/predict_wholeframe_round1_FNA_CV_VGG19_{a_mtl_model_type}_input256_patience_10/'
+
+            mtl_prediction_images_boxes = {}
+            # get MTL boxes
+            temp_mtl_prediction_image_names = np.load(f"{MLT_load_path}FNA_valid_fold{fold_index}/frame2_{a_letter}_repeat0/image_filenames.npy", allow_pickle=True)
+            temp_mtl_prediction_images_boxes = np.load(f"{MLT_load_path}FNA_valid_fold{fold_index}/frame2_{a_letter}_repeat0/pred_boxes.npy", allow_pickle=True)
+            temp_mtl_prediction_images_boxes = temp_mtl_prediction_images_boxes.item()
+
+
+            for mtl_index in range(len(temp_mtl_prediction_images_boxes)):
+                mtl_prediction_images_boxes[f"{temp_mtl_prediction_image_names[mtl_index]}.png"] = temp_mtl_prediction_images_boxes[mtl_index]
+
+            # remove two names from the faster_rcnn_prediction_images_boxes in the last index
+            faster_rcnn_names = list(faster_rcnn_prediction_images_boxes.keys())
+            mtl_names = list(mtl_prediction_images_boxes.keys())
+            mismatch_names = list(set(faster_rcnn_names) - set(mtl_names))
+            if len(mismatch_names) > 0:
+                print('mismatch names:', mismatch_names)
+                for a_mismatch_name in mismatch_names:
+                    del faster_rcnn_prediction_images_boxes[a_mismatch_name]
+
+
+            assert len(mtl_prediction_images_boxes) == len(faster_rcnn_prediction_images_boxes)
+            assert len(mtl_prediction_images_boxes) == len( set(list(faster_rcnn_prediction_images_boxes.keys()) + list(mtl_prediction_images_boxes.keys())) ) 
+
+            # -----------------------------------------------------------------------------------------------------------
+
+            list_of_ground_truth_polygons = convert_mask_to_polygon(ground_truth_mask_root_path)
+
+            test_image_names = get_files_in_folder(img_root_path)
+            test_image_names.sort()
+            test_images_by_subject = get_images_by_subject(test_image_names)
+            print_images_by_subject_statistics(test_images_by_subject)
+
+            # bootstrap data and count Follicular Clusters in each bootstrap sample
+            img_path = os.path.join(img_root_path, test_image_names[0])
+            img = Image.open(img_path)  # load images from paths
+            img_size = {}
+            img_size['height'], img_size['width'] = img.size
+
+            ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
+            ground_truth_mask_names.sort()
+
+            # --------------------- Data Loading and preparation above ---------------------------------------
+            save_base_path = f"{save_path}{a_mtl_model_type}_polygon_{fold_index}/"
+
+            precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
+                                                                        list_of_ground_truth_polygons, mtl_prediction_images_boxes,
+                                                                        faster_rcnn_prediction_images_boxes, model_type='MTL_overlap', overlap_area_threshold=0)
+
+            evaluation_dict[f'fold{fold_index}_{a_mtl_model_type}'] = {'precision': precision, 'recall': recall, 'f1': f1, 'iou': iou}
+
+    json.dump( evaluation_dict, open( f"{save_path}mtl_models_evaluation_statistics.json", 'w' ) )
+
+
 def run_eval_final(root_path, save_path):
     '''
     Here is the brief explanation of evaluation functions called in run_eval_final()
@@ -116,7 +200,7 @@ def run_eval_final(root_path, save_path):
         ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/mask_processed/'
         img_root_path = f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/img/'
         
-        mtl_model_type = 'MTL_auto_reg_aut'  # MTL model with classification and segmentation branches only
+        mtl_model_type = 'classifier' # 'MTL_auto' # 'MTL_auto_reg' # 'MTL_cls1_reg0_aut0_seg0.75'  # MTL model with classification and segmentation branches only
         MLT_load_path = f'{root_path}MARS-Net/models/results/predict_wholeframe_round1_FNA_CV_VGG19_{mtl_model_type}_input256_patience_10/'
 
         faster_rcnn_model_type = 'faster_640'
@@ -227,7 +311,7 @@ def run_eval_final(root_path, save_path):
         #                                             ground_truth_min_follicular, save_base_path)
 
     
-    json.dump( evaluation_dict, open( f"{save_path}evaluation_statistics.json", 'w' ) )
+    json.dump( evaluation_dict, open( f"{save_path}final_evaluation_statistics.json", 'w' ) )
 
     
 def aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path, faster_rcnn_load_path, faster_rcnn_model_type):
@@ -270,17 +354,21 @@ def aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path,
 
     return mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes
 
-def print_eval_final(save_path):
 
-    evaluation_dict = json.load( open( f"{save_path}evaluation_statistics.json", 'r' ) )
+def print_eval_final(save_path, eval_type):
+
+    evaluation_dict = json.load( open( f"{save_path}{eval_type}_evaluation_statistics.json", 'r' ) )
+    unique_model_types = set()
+    for a_key in evaluation_dict.keys():
+        unique_model_types.add(re.sub(r'fold[0-9]_', '', a_key))
 
     summary_eval_dict = {}
     print('------------------- Print Statistics -------------------')
-    for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:
+    for model_type in unique_model_types:
         print(model_type)
         for metric_name in ['precision', 'recall', 'f1', 'iou']:
             metric_value_list = []
-            for a_fold_index in range(7):
+            for a_fold_index in range(7):   # 7-fold cross validation
                 metric_value_list.append(evaluation_dict[f'fold{a_fold_index}_{model_type}'][metric_name])
                 
             np_metric_value = np.array(metric_value_list)
@@ -293,45 +381,37 @@ def print_eval_final(save_path):
         print('--------------')
     
     
-    print('------------------- Hypothesis Testings -------------------')
-    print('MTL vs. Faster R-CNN')
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['precision'], summary_eval_dict['faster-rcnn_overlap']['precision'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['recall'], summary_eval_dict['faster-rcnn_overlap']['recall'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['f1'], summary_eval_dict['faster-rcnn_overlap']['f1'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['iou'], summary_eval_dict['faster-rcnn_overlap']['iou'])
+    print('------------------- Hypothesis Testings for each pair of models -------------------')
+    unique_model_pairs = list(itertools.combinations(unique_model_types, 2))
+    for a_model_pair in unique_model_pairs:
+        print(f'------------ {a_model_pair[0]} vs. {a_model_pair[1]} ------------')
+        perform_wilcoxon_signed_rank_sum_test(summary_eval_dict[a_model_pair[0]]['precision'], summary_eval_dict[a_model_pair[1]]['precision'], 'precision')
+        perform_wilcoxon_signed_rank_sum_test(summary_eval_dict[a_model_pair[0]]['recall'], summary_eval_dict[a_model_pair[1]]['recall'], 'recall')
+        perform_wilcoxon_signed_rank_sum_test(summary_eval_dict[a_model_pair[0]]['f1'], summary_eval_dict[a_model_pair[1]]['f1'], 'f1')
+        perform_wilcoxon_signed_rank_sum_test(summary_eval_dict[a_model_pair[0]]['iou'], summary_eval_dict[a_model_pair[1]]['iou'], 'iou')
 
-    print('MTL vs. FNA-Net')
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['precision'], summary_eval_dict['MTL_faster-rcnn_overlap']['precision'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['recall'], summary_eval_dict['MTL_faster-rcnn_overlap']['recall'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['f1'], summary_eval_dict['MTL_faster-rcnn_overlap']['f1'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['MTL_overlap']['iou'], summary_eval_dict['MTL_faster-rcnn_overlap']['iou'])
-
-    print('Faster R-CNN vs. FNA-Net')
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['precision'], summary_eval_dict['MTL_faster-rcnn_overlap']['precision'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['recall'], summary_eval_dict['MTL_faster-rcnn_overlap']['recall'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['f1'], summary_eval_dict['MTL_faster-rcnn_overlap']['f1'])
-    perform_wilcoxon_signed_rank_sum_test(summary_eval_dict['faster-rcnn_overlap']['iou'], summary_eval_dict['MTL_faster-rcnn_overlap']['iou'])
-
-    Visualizer().manuscript_draw_comparison_bar_graph_with_errors(save_path, summary_eval_dict)
+    Visualizer().manuscript_draw_comparison_bar_graph_with_errors(save_path, eval_type, summary_eval_dict)
 
 
-def perform_wilcoxon_signed_rank_sum_test(first_list, second_list):
+def perform_wilcoxon_signed_rank_sum_test(first_list, second_list, metric_name):
     # ttest_rel or wilcoxon does not change the p-value much either and accept/reject results do not change
     res = scipy.stats.wilcoxon(first_list, second_list)
 
-    print('p', res.pvalue, '  statistic', res.statistic)
+    print(metric_name, '  p', res.pvalue, '  statistic', res.statistic)
 
 
 if __name__ == "__main__":
     # root_path = 'C:/Users/JunbongJang/PycharmProjects/'  
     root_path = 'C:/Users/Jun/Documents/PycharmProjects/'
-    save_path = f"{root_path}FNA/generated/CV_7folds/"
+    save_path = f"{root_path}FNA/generated/CV_7folds_new/"
 
     # model_type = 'faster_640'
     # model_type = 'MTL_auto_reg_aut'
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    run_eval_final(root_path, save_path)
-    print_eval_final(save_path)
+    # run_eval_final(root_path, save_path)
+    # print_eval_final(save_path, 'final')
+    # run_eval_MTL_models(root_path, save_path)
+    print_eval_final(save_path, 'mtl_models')
 

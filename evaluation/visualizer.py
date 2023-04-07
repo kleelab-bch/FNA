@@ -480,16 +480,27 @@ class Visualizer:
         print('model_type', model_type)
         print('overlap_area_threshold', overlap_area_threshold)
         print('tp:', total_gt_overlaps, 'fn:', total_false_negative, 'fp:', total_false_positive)
-        precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
-        recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
+        if (total_gt_overlaps + total_false_positive) > 0:
+            precision = total_gt_overlaps / (total_gt_overlaps + total_false_positive)
+        else:
+            precision = 0
+        if (total_gt_overlaps + total_false_negative) > 0:
+            recall = total_gt_overlaps / (total_gt_overlaps + total_false_negative)
+        else:
+            recall = 0
+
         if (precision + recall) > 0:
             f1 = 2 * precision * recall / (precision + recall)
         else:
             f1 = 0
+        if iou_counter > 0:
+            avg_iou = total_iou/iou_counter
+        else:
+            avg_iou = 0
         print('precision:', round(precision, 3))
         print('recall:', round(recall, 3))
         print('f1:', round(f1, 3))
-        print('total_iou:', round(total_iou/iou_counter,3))
+        print('total_iou:', round(avg_iou,3))
 
         # sklearn.metrics.matthews_corrcoef(y_true, y_pred)
 
@@ -502,7 +513,7 @@ class Visualizer:
         #     assert total_false_positive == 3
         #     assert total_false_negative == 21
 
-        return precision, recall, f1, total_iou/iou_counter
+        return precision, recall, f1, avg_iou
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, model_type):
@@ -611,37 +622,49 @@ class Visualizer:
         plt.close()
 
 
-    def manuscript_draw_comparison_bar_graph_with_errors(self, save_path, summary_eval_dict):
+    def manuscript_draw_comparison_bar_graph_with_errors(self, save_path, eval_type, summary_eval_dict):
         # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
 
-        sns.set_theme(style="whitegrid")
-        # list_of_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
+        sns.set_theme(style="whitegrid", palette="muted")
+        # list_of_mean_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
         #         ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
         #         ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
-        list_of_list = [[0.1486, 0.6080, 0.4500, 0.5058, 0.2497, 0.3276, 0.5007, 0.3552, 0.2902, 0.6874, 0.3008, 0.4131],
-                ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
-                ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
+        
+        # list_of_mean_list = [[0.1486, 0.6080, 0.4500, 0.5058, 0.2497, 0.3276, 0.5007, 0.3552, 0.2902, 0.6874, 0.3008, 0.4131],
+        #         ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
+        #         ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
 
-        # transpose list of list
-        transposed_list_of_list = np.array(list_of_list).T.tolist()
+        # dicts with errors
+        # iou_error = {0.1486:0.046824750243122874,0.2497:0.06494991166985277, 0.2902:0.09410608818186629}
+        # precision_error = {0.6080:0.22494560274141923, 0.3276:0.1983430418867766, 0.6874:0.25833208685863934}
+        # recall_error = {0.4500:0.18676425172882047, 0.5007:0.08396270727752463, 0.3008:0.13788650863512383}
+        # f1_error = {0.5058:0.1780586145725063, 0.3552:0.10321065268302565, 0.4131:0.1698763900930889}
+
+        # # combine them; providing all the keys are unique
+        # z = {**iou_error, **precision_error, **recall_error, **f1_error}
+
+        z = {}
+        list_of_mean_list = [[],[],[]]
+        for mtl_model_type in summary_eval_dict.keys():
+            for a_metric in ['precision', 'recall', 'f1']:
+                a_mean = np.round(np.mean(summary_eval_dict[mtl_model_type][a_metric]), 8)
+                a_std = np.round(np.std(summary_eval_dict[mtl_model_type][a_metric]), 8)
+                
+                z[a_mean] = a_std
+                list_of_mean_list[0].append(a_mean)
+                list_of_mean_list[1].append(a_metric)
+                list_of_mean_list[2].append(mtl_model_type)
+
+        transposed_list_of_list = np.array(list_of_mean_list).T.tolist()
         df = pd.DataFrame(transposed_list_of_list, columns=['val', 'metric', 'model'])
         df["val"] = pd.to_numeric(df["val"])
         
         fig, ax = plt.subplots(constrained_layout=True)
 
-        sns.barplot(x="metric", y="val", hue="model", data=df)
-        ax.set_ylim(0, 1.2)
+        sns.barplot(x="model", y="val", hue="metric", data=df, order=['classifier', 'MTL_auto_aut_seg', 'MTL_auto_reg_seg', 'MTL_auto_reg_aut', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg', 'MTL_auto'])
+        ax.set_ylim(0, 1)
         ax.legend(loc='upper left')
         
-        # dicts with errors
-        iou_error = {0.1486:0.046824750243122874,0.2497:0.06494991166985277, 0.2902:0.09410608818186629}
-        precision_error = {0.6080:0.22494560274141923, 0.3276:0.1983430418867766, 0.6874:0.25833208685863934}
-        recall_error = {0.4500:0.18676425172882047, 0.5007:0.08396270727752463, 0.3008:0.13788650863512383}
-        f1_error = {0.5058:0.1780586145725063, 0.3552:0.10321065268302565, 0.4131:0.1698763900930889}
-
-        # combine them; providing all the keys are unique
-        z = {**iou_error, **precision_error, **recall_error, **f1_error}
-
         for p in ax.patches:
             x = p.get_x()  # get the bottom left x corner of the bar
             w = p.get_width()  # get width of bar
@@ -652,4 +675,4 @@ class Visualizer:
         save_base_path = f"{save_path}manuscript/"
         if os.path.isdir(save_base_path) is False:
             os.makedirs(save_base_path)
-        plt.savefig(f"{save_base_path}bar_graph_comparison.svg")
+        plt.savefig(f"{save_base_path}{eval_type}_bar_graph_comparison.svg")
