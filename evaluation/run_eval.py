@@ -265,17 +265,21 @@ def run_eval_final(root_path, save_path):
         ground_truth_min_follicular = 15  # can be changed to 6 or etc.
         # -------------------- Polygon Visualization -----------------------------
         for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap'
-            save_base_path = f"{save_path}{model_type}_polygon_{fold_index}/"
+            # save_base_path = f"{save_path}{model_type}_polygon_{fold_index}/"
 
             # precision_list = []
             # recall_list = []
             # overlap_area_threshold_list = []
             # f1_list = []
             # for overlap_area_threshold in np.linspace(0, 1, 21, endpoint=True):
-            overlap_area_threshold = 0
-            precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
-                                                                        list_of_ground_truth_polygons, mtl_prediction_images_boxes,
-                                                                        faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold)
+
+
+            # overlap_area_threshold = 0
+            # precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
+            #                                                             list_of_ground_truth_polygons, mtl_prediction_images_boxes,
+            #                                                             faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold)
+            
+
             # overlap_area_threshold_list.append(overlap_area_threshold)
             # precision_list.append(precision)
             # recall_list.append(recall)
@@ -284,16 +288,18 @@ def run_eval_final(root_path, save_path):
             # visualizer.plot_precision_recall_curve_at_thresholds(precision_list, recall_list, model_type, save_base_path)
             # plot_performance_at_thresholds(overlap_area_threshold_list, precision_list, recall_list, f1_list, 0, save_base_path)
 
-            evaluation_dict[f'fold{fold_index}_{model_type}'] = {'precision': precision, 'recall': recall, 'f1': f1, 'iou': iou}
+
+            # evaluation_dict[f'fold{fold_index}_{model_type}'] = {'precision': precision, 'recall': recall, 'f1': f1, 'iou': iou}
+
             # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
-            # bootstrap_model_type = f'bootstrapped_{model_type}'
-            # save_base_path = f"{save_path}{bootstrap_model_type}_polygon/"
+            bootstrap_model_type = f'bootstrapped_{model_type}_{a_letter}'
+            save_base_path = f"{save_path}{bootstrap_model_type}_polygon/"
 
-            # bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
-            #                              list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
+            bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
+                                         list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
 
-            # bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
-            # bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+            bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
+            bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
 
         # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
         # save_base_path1 = f"{save_path}bootstrapped_MTL_overlap_polygon/"
@@ -410,8 +416,8 @@ if __name__ == "__main__":
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    # run_eval_final(root_path, save_path)
+    run_eval_final(root_path, save_path)
     # print_eval_final(save_path, 'final')
     # run_eval_MTL_models(root_path, save_path)
-    print_eval_final(save_path, 'mtl_models')
+    # print_eval_final(save_path, 'mtl_models')
 

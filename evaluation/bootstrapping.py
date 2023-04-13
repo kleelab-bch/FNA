@@ -362,9 +362,20 @@ def stats_at_threshold(box_counts_df, ground_truth_min_follicular, predicted_min
     false_positive = len(false_positive)
     false_negative = len(false_negative)
 
-    precision = true_positive / (true_positive + false_positive)
-    recall = true_positive / (true_positive + false_negative)
-    F1 = 2 * (precision * recall) / (precision + recall)
+    if (true_positive + false_positive) > 0:
+        precision = true_positive / (true_positive + false_positive)
+    else:
+        precision = 0
+
+    if (true_positive + false_negative) > 0:
+        recall = true_positive / (true_positive + false_negative)
+    else:
+        recall = 0
+
+    if (precision + recall) > 0:
+        F1 = 2 * precision * recall / (precision + recall)
+    else:
+        F1 = 0
 
     if DEBUG:
         print('pred_min_follicular:', predicted_min_follicular)
