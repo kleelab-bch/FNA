@@ -26,6 +26,19 @@ def calculate_polygon_area(ordered_coordinates):
     return area
 
 
+def get_multipolygon_area(a_multipolygon):
+    if a_multipolygon.geom_type == 'Polygon':
+        processed_multipolygon = [a_multipolygon]
+    else:
+        processed_multipolygon = list(a_multipolygon.geoms)
+
+    area_list = []
+    for a_polygon in processed_multipolygon:
+        area_list.append(a_polygon.area)
+
+    return area_list
+
+
 def calculate_box_overlap_area(box1, box2):
     # https://stackoverflow.com/questions/27152904/calculate-overlapped-area-between-two-rectangles
     ymin1, xmin1, ymax1, xmax1 = box1[0], box1[1], box1[2], box1[3]

@@ -392,7 +392,7 @@ class Visualizer:
 
 
     def overlay_two_model_overlapped_polygons_over_images(self, save_base_path, img_root_path, mask_names, list_of_ground_truth_polygons,
-                                                          mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold):
+                                                          mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold, save_image_bool):
         '''
         In addition to drawing the intersection of predicitons from two models, 
         evaluate the performance in f1, precision and recall statistics
@@ -406,6 +406,9 @@ class Visualizer:
         total_gt_overlaps = 0
         total_iou = 0
         iou_counter = 0
+
+        overlapped_polygon_area_list = []
+
         for idx, filename in enumerate(mask_names):
             img_path = os.path.join(img_root_path, filename)
             img = Image.open(img_path)  # load images from paths
@@ -425,9 +428,9 @@ class Visualizer:
                 
                 # convert MTL boxes to polygons
                 # convert Faster R-CNN boxes to polygons
-                # convert ground truth boxes to polygons
                 faster_rcnn_polygon = convert_boxes_to_polygons(faster_rcnn_predicted_boxes)
                 mtl_polygon = convert_boxes_to_polygons(mtl_predicted_boxes)
+
 
                 # overlap MTL polygons with Faster R-CNN polygons
                 if 'MTL_faster-rcnn_overlap' in model_type:
@@ -438,6 +441,10 @@ class Visualizer:
                     overlapped_prediction_polygon = mtl_polygon
                 else:
                     raise ValueError('model type incorrect')
+                
+                # get list of areas from multipolygon to draw histogram (4/29/2023)
+                overlapped_polygon_area_list = overlapped_polygon_area_list + get_multipolygon_area(overlapped_prediction_polygon)
+
                 # overlap MTL + Faster R-CNN polygon with ground truth polygon
                 overlapped_final_polygon = overlapped_prediction_polygon.intersection(one_ground_truth_polygons)
 
@@ -473,7 +480,8 @@ class Visualizer:
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_prediction_polygon, (0, 255, 0), True)
                 overlaid_img = self.overlay_polygons(overlaid_img, overlapped_final_polygon, (255, 255, 0), True)
                 save_filename = save_base_path + filename
-                # overlaid_img.save(save_filename)
+                if save_image_bool:
+                    overlaid_img.save(save_filename)
 
             # evaluate by F1, Precision and Recall
         print('-------------------')
@@ -513,7 +521,8 @@ class Visualizer:
         #     assert total_false_positive == 3
         #     assert total_false_negative == 21
 
-        return precision, recall, f1, avg_iou
+        
+        return precision, recall, f1, avg_iou, overlapped_polygon_area_list
 
 
     def bounding_box_per_image_distribution(self, save_base_path, mask_names, ground_truth_boxes, predicted_boxes, model_type):
@@ -622,26 +631,83 @@ class Visualizer:
         plt.close()
 
 
+    def draw_histograms_of_mask_area_list(self, save_path, GT_polygon_area_list, mtl_polyon_area_list, faster_rcnn_polygon_area_list, fnanet_polyon_area_list):
+        print("Number of areas and total area")
+        print("GT", len(GT_polygon_area_list), sum(GT_polygon_area_list))
+        print("faster", len(faster_rcnn_polygon_area_list), sum(faster_rcnn_polygon_area_list))
+        print("MTL", len(mtl_polyon_area_list), sum(mtl_polyon_area_list))
+        print("FNA-Net", len(fnanet_polyon_area_list), sum(fnanet_polyon_area_list))
+
+        plt.figure()
+        plt.hist(GT_polygon_area_list, bins=30, range=(0,300000))
+        plt.savefig(f"{save_path}/manuscript/gt_polygon_area_list.png")
+        plt.close()
+
+        plt.figure()
+        plt.hist(faster_rcnn_polygon_area_list, bins=30, range=(0,300000))
+        plt.savefig(f"{save_path}/manuscript/faster_rcnn_polygon_area_list.png")
+        plt.close()
+
+        plt.figure()
+        plt.hist(mtl_polyon_area_list, bins=30, range=(0,300000))
+        plt.savefig(f"{save_path}/manuscript/mtl_polygon_area_list.png")
+        plt.close()
+
+        plt.figure()
+        plt.hist(fnanet_polyon_area_list, bins=30, range=(0,300000))
+        plt.savefig(f"{save_path}/manuscript/fnanet_polyon_area_list.png")
+        plt.close()
+
+    
     def manuscript_draw_comparison_bar_graph_with_errors(self, save_path, eval_type, summary_eval_dict):
+        # Figure 3 (c) in the manuscript
         # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
 
         sns.set_theme(style="whitegrid", palette="muted")
-        # list_of_mean_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
-        #         ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
-        #         ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
+        list_of_mean_list = [[0.118, 0.44, 0.73, 0.551, 0.307, 0.727, 0.432, 0.542, 0.318, 0.842, 0.432, 0.571],
+                ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
+                ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
         
-        # list_of_mean_list = [[0.1486, 0.6080, 0.4500, 0.5058, 0.2497, 0.3276, 0.5007, 0.3552, 0.2902, 0.6874, 0.3008, 0.4131],
-        #         ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
-        #         ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
+        list_of_mean_list = [[0.1486, 0.6080, 0.4500, 0.5058, 0.2497, 0.3276, 0.5007, 0.3552, 0.2902, 0.6874, 0.3008, 0.4131],
+                ['IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1', 'IOU', 'Precision', 'Recall', 'F1'],
+                ['MTL', 'MTL', 'MTL', 'MTL', 'RCNN', 'RCNN', 'RCNN', 'RCNN', 'Both', 'Both', 'Both', 'Both']]
 
         # dicts with errors
-        # iou_error = {0.1486:0.046824750243122874,0.2497:0.06494991166985277, 0.2902:0.09410608818186629}
-        # precision_error = {0.6080:0.22494560274141923, 0.3276:0.1983430418867766, 0.6874:0.25833208685863934}
-        # recall_error = {0.4500:0.18676425172882047, 0.5007:0.08396270727752463, 0.3008:0.13788650863512383}
-        # f1_error = {0.5058:0.1780586145725063, 0.3552:0.10321065268302565, 0.4131:0.1698763900930889}
+        iou_error = {0.1486:0.046824750243122874,0.2497:0.06494991166985277, 0.2902:0.09410608818186629}
+        precision_error = {0.6080:0.22494560274141923, 0.3276:0.1983430418867766, 0.6874:0.25833208685863934}
+        recall_error = {0.4500:0.18676425172882047, 0.5007:0.08396270727752463, 0.3008:0.13788650863512383}
+        f1_error = {0.5058:0.1780586145725063, 0.3552:0.10321065268302565, 0.4131:0.1698763900930889}
 
-        # # combine them; providing all the keys are unique
-        # z = {**iou_error, **precision_error, **recall_error, **f1_error}
+        # combine them; providing all the keys are unique
+        z = {**iou_error, **precision_error, **recall_error, **f1_error}
+
+        transposed_list_of_list = np.array(list_of_mean_list).T.tolist()
+        df = pd.DataFrame(transposed_list_of_list, columns=['val', 'metric', 'model'])
+        df["val"] = pd.to_numeric(df["val"])
+
+        fig, ax = plt.subplots(constrained_layout=True)
+
+        sns.barplot(x="metric", y="val", hue="model", data=df)
+        ax.set_ylim(0, 1.1)
+        ax.legend(loc='upper left')
+        
+        for p in ax.patches:
+            x = p.get_x()  # get the bottom left x corner of the bar
+            w = p.get_width()  # get width of bar
+            h = p.get_height()  # get height of bar
+            error_offset_y = z[h]
+            plt.vlines(x+w/2, h-error_offset_y, h+error_offset_y, color='k')  # draw a vertical line
+
+        save_base_path = f"{save_path}manuscript/"
+        if os.path.isdir(save_base_path) is False:
+            os.makedirs(save_base_path)
+        plt.savefig(f"{save_base_path}{eval_type}_bar_graph_comparison.svg")
+
+
+    def manuscript_draw_MTL_comparison_bar_graph_with_errors(self, save_path, eval_type, summary_eval_dict):
+        # Figure 3 (a) in the manuscript
+        # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
+        sns.set_theme(style="whitegrid", palette="muted")
 
         z = {}
         list_of_mean_list = [[],[],[]]
@@ -661,7 +727,8 @@ class Visualizer:
         
         fig, ax = plt.subplots(constrained_layout=True)
 
-        sns.barplot(x="model", y="val", hue="metric", data=df, order=['classifier', 'MTL_auto_aut_seg', 'MTL_auto_reg_seg', 'MTL_auto_reg_aut', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg', 'MTL_auto'])
+        # sns.barplot(x="model", y="val", hue="metric", data=df, order=['classifier', 'MTL_auto_aut_seg', 'MTL_auto_reg_seg', 'MTL_auto_reg_aut', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg', 'MTL_auto'])
+        sns.barplot(x="metric", y="val", hue="model", data=df, hue_order=['classifier', 'MTL_auto_aut_seg', 'MTL_auto_reg_seg', 'MTL_auto_reg_aut', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg', 'MTL_auto'])
         ax.set_ylim(0, 1)
         ax.legend(loc='upper left')
         
@@ -675,4 +742,4 @@ class Visualizer:
         save_base_path = f"{save_path}manuscript/"
         if os.path.isdir(save_base_path) is False:
             os.makedirs(save_base_path)
-        plt.savefig(f"{save_base_path}{eval_type}_bar_graph_comparison.svg")
+        plt.savefig(f"{save_base_path}{eval_type}_bar_graph_MTL_comparison.svg")

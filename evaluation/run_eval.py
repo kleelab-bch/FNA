@@ -13,6 +13,7 @@ from visualizer import Visualizer
 from explore_data import get_files_in_folder, get_images_by_subject, print_images_by_subject_statistics
 from bootstrapping import bootstrap_analysis, bootstrap_analysis_compare_precision_recall, bootstrap_data, bootstrap_two_model_polygons
 from bootstrapping_visualization import plot_performance_at_thresholds
+from calc_polygon import get_multipolygon_area
 import json
 import scipy
 import re
@@ -170,7 +171,7 @@ def run_eval_MTL_models(root_path, save_path):
             # --------------------- Data Loading and preparation above ---------------------------------------
             save_base_path = f"{save_path}{a_mtl_model_type}_polygon_{fold_index}/"
 
-            precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
+            precision, recall, f1, iou, _, _ = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
                                                                         list_of_ground_truth_polygons, mtl_prediction_images_boxes,
                                                                         faster_rcnn_prediction_images_boxes, model_type='MTL_overlap', overlap_area_threshold=0)
 
@@ -192,6 +193,12 @@ def run_eval_final(root_path, save_path):
     '''
     evaluation_dict = {}
     visualizer = Visualizer()
+
+    GT_polygon_area_list = []
+    faster_rcnn_polygon_area_list = []
+    mtl_polyon_area_list =[]
+    fnanet_polyon_area_list =[]
+
     for fold_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
         
         # ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/all/mask_processed/'
@@ -244,6 +251,9 @@ def run_eval_final(root_path, save_path):
         # -----------------------------------------------------------------------------------------------------------
 
         list_of_ground_truth_polygons = convert_mask_to_polygon(ground_truth_mask_root_path)
+        # get GT polygon areas
+        for a_multipolygon in list_of_ground_truth_polygons:
+            GT_polygon_area_list = GT_polygon_area_list + get_multipolygon_area(a_multipolygon)
 
         test_image_names = get_files_in_folder(img_root_path)
         test_image_names.sort()
@@ -262,44 +272,61 @@ def run_eval_final(root_path, save_path):
         # --------------------- Data Loading and preparation above ---------------------------------------
 
         # model_type options: 'faster-rcnn_overlap', 'MTL_overlap', 'MTL_faster-rcnn_overlap'
-        ground_truth_min_follicular = 15  # can be changed to 6 or etc.
+        ground_truth_min_follicular = 15  # can be changed to 6, 15, 30, etc.
         # -------------------- Polygon Visualization -----------------------------
         for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap'
-            # save_base_path = f"{save_path}{model_type}_polygon_{fold_index}/"
+            save_base_path = f"{save_path}{model_type}_polygon_{fold_index}/"
 
+            # ---------------- To determine the optimal overlap_area_threshold (it is 0) --------------------
             # precision_list = []
             # recall_list = []
             # overlap_area_threshold_list = []
             # f1_list = []
             # for overlap_area_threshold in np.linspace(0, 1, 21, endpoint=True):
-
-
-            # overlap_area_threshold = 0
-            # precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
-            #                                                             list_of_ground_truth_polygons, mtl_prediction_images_boxes,
-            #                                                             faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold)
+            #     precision, recall, f1, iou = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
+            #                                                                 list_of_ground_truth_polygons, mtl_prediction_images_boxes,
+            #                                                                 faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold)
             
 
-            # overlap_area_threshold_list.append(overlap_area_threshold)
-            # precision_list.append(precision)
-            # recall_list.append(recall)
-            # f1_list.append(f1)
+            #     overlap_area_threshold_list.append(overlap_area_threshold)
+            #     precision_list.append(precision)
+            #     recall_list.append(recall)
+            #     f1_list.append(f1)
 
-            # visualizer.plot_precision_recall_curve_at_thresholds(precision_list, recall_list, model_type, save_base_path)
-            # plot_performance_at_thresholds(overlap_area_threshold_list, precision_list, recall_list, f1_list, 0, save_base_path)
+            #     visualizer.plot_precision_recall_curve_at_thresholds(precision_list, recall_list, model_type, save_base_path)
+            #     plot_performance_at_thresholds(overlap_area_threshold_list, precision_list, recall_list, f1_list, 0, save_base_path)
+            # ------------------------------------------------------------------------------------------------------
+            
+            overlap_area_threshold = 0
+            precision, recall, f1, iou, polygon_area_list_one_fold = visualizer.overlay_two_model_overlapped_polygons_over_images(save_base_path, img_root_path, ground_truth_mask_names,
+                                                                        list_of_ground_truth_polygons, mtl_prediction_images_boxes,
+                                                                        faster_rcnn_prediction_images_boxes, model_type, overlap_area_threshold, save_image_bool=False)
+
+            evaluation_dict[f'fold{fold_index}_{model_type}'] = {'precision': precision, 'recall': recall, 'f1': f1, 'iou': iou}
 
 
-            # evaluation_dict[f'fold{fold_index}_{model_type}'] = {'precision': precision, 'recall': recall, 'f1': f1, 'iou': iou}
+            # aggergate MTL, faster rcnn or fna-net mask areas
+            if model_type == 'MTL_overlap':
+                mtl_polyon_area_list = mtl_polyon_area_list + polygon_area_list_one_fold
+
+            elif model_type == 'faster-rcnn_overlap':
+                faster_rcnn_polygon_area_list = faster_rcnn_polygon_area_list + polygon_area_list_one_fold
+                
+            elif model_type == 'MTL_faster-rcnn_overlap':
+                fnanet_polyon_area_list = fnanet_polyon_area_list + polygon_area_list_one_fold
 
             # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
-            bootstrap_model_type = f'bootstrapped_{model_type}_{a_letter}'
-            save_base_path = f"{save_path}{bootstrap_model_type}_polygon/"
+            # bootstrap_model_type = f'bootstrapped_{model_type}_{a_letter}'
+            # save_base_path = f"{save_path}{bootstrap_model_type}_polygon/"
 
-            bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
-                                         list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000)
+            # repeat_bool = False
+            # if repeat_bool:
+            #     load_suffix = "_repeat"
+            # bootstrap_two_model_polygons(save_base_path, img_root_path, test_image_names, ground_truth_mask_names, test_images_by_subject, bootstrap_model_type,
+            #                              list_of_ground_truth_polygons, mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, 10000, repeat_bool)
 
-            bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
-            bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
+            # bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df{load_suffix}.csv', header=None)
+            # bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_follicular, save_base_path)
 
         # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
         # save_base_path1 = f"{save_path}bootstrapped_MTL_overlap_polygon/"
@@ -318,6 +345,7 @@ def run_eval_final(root_path, save_path):
 
     
     json.dump( evaluation_dict, open( f"{save_path}final_evaluation_statistics.json", 'w' ) )
+    visualizer.draw_histograms_of_mask_area_list(save_path, GT_polygon_area_list, mtl_polyon_area_list, faster_rcnn_polygon_area_list, fnanet_polyon_area_list)
 
     
 def aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path, faster_rcnn_load_path, faster_rcnn_model_type):
@@ -361,6 +389,52 @@ def aggreage_predicted_boxes_from_cross_validation_by_image_names(MLT_load_path,
     return mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes
 
 
+def run_eval_final_bootstrap_only(root_path, save_path):
+
+    bootstrapped_df_list_per_model_type = {'MTL_overlap':[], 'faster-rcnn_overlap':[], 'MTL_faster-rcnn_overlap':[]}  
+    for fold_index, a_letter in zip(range(7), ['A','B','C','D','E','F','G']):
+  
+        ground_truth_mask_root_path =  f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/mask_processed/'
+        img_root_path = f'{root_path}MARS-Net/assets/FNA/FNA_valid_fold{fold_index}/img/'
+
+        test_image_names = get_files_in_folder(img_root_path)
+        test_image_names.sort()
+        test_images_by_subject = get_images_by_subject(test_image_names)
+        print_images_by_subject_statistics(test_images_by_subject)
+
+        # bootstrap data and count Follicular Clusters in each bootstrap sample
+        img_path = os.path.join(img_root_path, test_image_names[0])
+        img = Image.open(img_path)  # load images from paths
+        img_size = {}
+        img_size['height'], img_size['width'] = img.size
+
+        ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
+        ground_truth_mask_names.sort()
+
+        ground_truth_min_follicular = 45  # can be changed to 6, 15, etc.
+        for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap'
+
+            # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
+            bootstrap_model_type = f'bootstrapped_{model_type}_{a_letter}'
+            save_base_path = f"{save_path}{bootstrap_model_type}_polygon/"
+
+            bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
+            bootstrapped_df_list_per_model_type[model_type].append(bootstrapped_df)
+            
+        # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
+
+    bootstrapped_df_MTL = pd.concat(bootstrapped_df_list_per_model_type['MTL_overlap'])
+    bootstrapped_df_faster = pd.concat(bootstrapped_df_list_per_model_type['faster-rcnn_overlap'])
+    bootstrapped_df_MTL_faster = pd.concat(bootstrapped_df_list_per_model_type['MTL_faster-rcnn_overlap'])
+
+    save_base_path = f"{save_path}bootstrapped_compare_precision_recall_polygon/"
+    if os.path.isdir(save_base_path) is False:
+        os.mkdir(save_base_path)
+
+    bootstrap_analysis_compare_precision_recall(bootstrapped_df_MTL, bootstrapped_df_faster, bootstrapped_df_MTL_faster,
+                                                ground_truth_min_follicular, save_base_path, 'CV')
+
+
 def print_eval_final(save_path, eval_type):
 
     evaluation_dict = json.load( open( f"{save_path}{eval_type}_evaluation_statistics.json", 'r' ) )
@@ -396,7 +470,10 @@ def print_eval_final(save_path, eval_type):
         perform_wilcoxon_signed_rank_sum_test(summary_eval_dict[a_model_pair[0]]['f1'], summary_eval_dict[a_model_pair[1]]['f1'], 'f1')
         perform_wilcoxon_signed_rank_sum_test(summary_eval_dict[a_model_pair[0]]['iou'], summary_eval_dict[a_model_pair[1]]['iou'], 'iou')
 
-    Visualizer().manuscript_draw_comparison_bar_graph_with_errors(save_path, eval_type, summary_eval_dict)
+    if eval_type == 'mtl_models':
+        Visualizer().manuscript_draw_MTL_comparison_bar_graph_with_errors(save_path, eval_type, summary_eval_dict)
+    elif eval_type == 'final':
+        Visualizer().manuscript_draw_comparison_bar_graph_with_errors(save_path, eval_type, summary_eval_dict)
 
 
 def perform_wilcoxon_signed_rank_sum_test(first_list, second_list, metric_name):
@@ -416,8 +493,10 @@ if __name__ == "__main__":
     # ground_truth_mask_root_path, img_root_path, load_path, save_base_path = get_data_path(model_type)
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
-    run_eval_final(root_path, save_path)
-    # print_eval_final(save_path, 'final')
+    # run_eval_final(root_path, save_path)
+    # run_eval_final_bootstrap_only(root_path, save_path)
+    print_eval_final(save_path, 'final')
+
     # run_eval_MTL_models(root_path, save_path)
     # print_eval_final(save_path, 'mtl_models')
 

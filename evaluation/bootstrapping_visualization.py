@@ -200,7 +200,7 @@ def plot_precision_recall_curve_at_thresholds(y_true, precision_list, recall_lis
 
 def plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1,
                                                          precision_list2, recall_list2,
-                                                         precision_list3, recall_list3, ground_truth_min_follicular, save_base_path):
+                                                         precision_list3, recall_list3, ground_truth_min_follicular, save_base_path, save_prefix=''):
     no_skill, no_skill_auc = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list1, recall_list1, 'MTL only')
     no_skill2, _ = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list2, recall_list2, 'Faster R-CNN only')
     no_skill3, _ = helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list3, recall_list3, 'FNA-Net')
@@ -218,7 +218,7 @@ def plot_comparison_precision_recall_curve_at_thresholds(y_true, precision_list1
     # plt.ylim(bottom= math.floor(no_skill*100)/100)
     plt.legend(loc="lower left", bbox_to_anchor=(0, 0.05))
     figure_postprocess()
-    plt.savefig(save_base_path + f'precision_recall_curve_at_thresholds_threshold_{ground_truth_min_follicular}.svg')
+    plt.savefig(save_base_path + f'{save_prefix}_precision_recall_curve_at_thresholds_threshold_{ground_truth_min_follicular}.svg')
     plt.close()
 
 
@@ -242,7 +242,7 @@ def helper_plot_precision_recall_curve_at_thresholds(y_true, precision_list, rec
     return no_skill, no_skill_auc
 
 
-def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list, ground_truth_min_follicular, save_base_path):
+def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list, recall_list, f1_list, ground_truth_min_follicular, save_base_path, save_prefix=''):
     assert len(predicted_min_follicular_list) == len(precision_list)
     assert len(predicted_min_follicular_list) == len(recall_list)
     assert len(predicted_min_follicular_list) == len(f1_list)
@@ -259,7 +259,7 @@ def plot_performance_at_thresholds(predicted_min_follicular_list, precision_list
     # plt.xlim(left=0, right=len(predicted_min_follicular_list))
     plt.legend()
     figure_postprocess()
-    plt.savefig(save_base_path + f'performance_at_thresholds_threshold_{ground_truth_min_follicular}.svg')
+    plt.savefig(save_base_path + f'{save_prefix}_performance_at_thresholds_threshold_{ground_truth_min_follicular}.svg')
     plt.close()
 
 def figure_postprocess(use_grid=True):
