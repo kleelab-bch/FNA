@@ -709,6 +709,7 @@ class Visualizer:
         # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
         sns.set_theme(style="whitegrid", palette="muted")
 
+        # get error bar
         z = {}
         list_of_mean_list = [[],[],[]]
         for mtl_model_type in summary_eval_dict.keys():
@@ -728,7 +729,8 @@ class Visualizer:
         fig, ax = plt.subplots(constrained_layout=True)
 
         # sns.barplot(x="model", y="val", hue="metric", data=df, order=['classifier', 'MTL_auto_aut_seg', 'MTL_auto_reg_seg', 'MTL_auto_reg_aut', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg', 'MTL_auto'])
-        sns.barplot(x="metric", y="val", hue="model", data=df, hue_order=['classifier', 'MTL_auto_aut_seg', 'MTL_auto_reg_seg', 'MTL_auto_reg_aut', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg', 'MTL_auto'])
+        # sns.barplot(x="metric", y="val", hue="model", data=df, hue_order=['classifier', 'MTL_auto_aut_seg', 'MTL_auto_reg_seg', 'MTL_auto_reg_aut', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg', 'MTL_auto'])
+        sns.barplot(x="metric", y="val", hue="model", data=df, hue_order=['MTL_auto','classifier', 'MTL_auto_reg_seg', 'MTL_auto_aut_seg', 'MTL_auto_reg', 'MTL_cls1_reg0_aut0_seg0.75', 'MTL_auto_reg_aut'])
         ax.set_ylim(0, 1)
         ax.legend(loc='upper left')
         

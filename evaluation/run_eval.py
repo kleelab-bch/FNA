@@ -411,7 +411,7 @@ def run_eval_final_bootstrap_only(root_path, save_path):
         ground_truth_mask_names = [file for file in os.listdir(ground_truth_mask_root_path) if file.endswith(".png")]
         ground_truth_mask_names.sort()
 
-        ground_truth_min_follicular = 45  # can be changed to 6, 15, etc.
+        ground_truth_min_follicular = 90  # can be changed to 6, 15, etc.
         for model_type in ['MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap']:  # 'MTL_overlap', 'faster-rcnn_overlap', 'MTL_faster-rcnn_overlap'
 
             # ------------------- Bootstrapping number of overlapped polygons per image----------------------------------
@@ -421,7 +421,7 @@ def run_eval_final_bootstrap_only(root_path, save_path):
             bootstrapped_df = pd.read_csv(f'{save_base_path}bootstrapped_df.csv', header=None)
             bootstrapped_df_list_per_model_type[model_type].append(bootstrapped_df)
             
-        # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
+    # ---------- Plot Precision Recall curve for 3 models on bootstrapped samples -----------
 
     bootstrapped_df_MTL = pd.concat(bootstrapped_df_list_per_model_type['MTL_overlap'])
     bootstrapped_df_faster = pd.concat(bootstrapped_df_list_per_model_type['faster-rcnn_overlap'])
@@ -494,8 +494,8 @@ if __name__ == "__main__":
     # run_eval(model_type, ground_truth_mask_root_path, img_root_path, load_path, save_base_path)
 
     # run_eval_final(root_path, save_path)
-    # run_eval_final_bootstrap_only(root_path, save_path)
-    print_eval_final(save_path, 'final')
+    run_eval_final_bootstrap_only(root_path, save_path)
+    # print_eval_final(save_path, 'final')
 
     # run_eval_MTL_models(root_path, save_path)
     # print_eval_final(save_path, 'mtl_models')
