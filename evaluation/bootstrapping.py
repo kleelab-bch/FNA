@@ -68,9 +68,9 @@ def bootstrap_analysis(bootstrapped_df, test_image_names, ground_truth_min_folli
 
 
 def bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_df2, bootstrapped_df3, ground_truth_min_follicular, save_base_path, save_prefix=''):
-    predicted_min_follicular_list1, precision_list1, recall_list1, f1_list1 = get_precision_recall_at_thresholds(bootstrapped_df1, ground_truth_min_follicular)
-    predicted_min_follicular_list2, precision_list2, recall_list2, f1_list2 = get_precision_recall_at_thresholds(bootstrapped_df2, ground_truth_min_follicular)
-    predicted_min_follicular_list3, precision_list3, recall_list3, f1_list3 = get_precision_recall_at_thresholds(bootstrapped_df3, ground_truth_min_follicular)
+    predicted_min_follicular_list1, precision_list1, recall_list1, f1_list1 = get_precision_recall_at_thresholds(bootstrapped_df1, ground_truth_min_follicular, debug_predicted_min_follicular=39) # 39
+    predicted_min_follicular_list2, precision_list2, recall_list2, f1_list2 = get_precision_recall_at_thresholds(bootstrapped_df2, ground_truth_min_follicular, debug_predicted_min_follicular=39) # 39
+    predicted_min_follicular_list3, precision_list3, recall_list3, f1_list3 = get_precision_recall_at_thresholds(bootstrapped_df3, ground_truth_min_follicular, debug_predicted_min_follicular=26) # 26
 
     # y_true = bootstrapped_df1[0] >= ground_truth_min_follicular
 
@@ -86,8 +86,7 @@ def bootstrap_analysis_compare_precision_recall(bootstrapped_df1, bootstrapped_d
                                                             save_base_path, save_prefix)
 
 
-
-def get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicular):
+def get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicular, debug_predicted_min_follicular):
     precision_list = []
     recall_list = []
     f1_list = []
@@ -98,7 +97,7 @@ def get_precision_recall_at_thresholds(bootstrapped_df, ground_truth_min_follicu
     print('get_precision_recall_at_thresholds for_step', for_step)
     for predicted_min_follicular in range(1, ground_truth_min_follicular * 4, for_step):
         a_precision, a_recall, a_f1 = stats_at_threshold(bootstrapped_df, ground_truth_min_follicular,
-                                                         predicted_min_follicular, DEBUG=True)
+                                                         predicted_min_follicular, DEBUG=True) # (debug_predicted_min_follicular==predicted_min_follicular)
         predicted_min_follicular_list.append(predicted_min_follicular)
         precision_list.append(a_precision)
         recall_list.append(a_recall)
@@ -258,7 +257,7 @@ def bootstrap_box_polygon(image_names, images_by_subject, model_type, img_size, 
 
 
 def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, ground_truth_mask_names, images_by_subject, model_type, list_of_ground_truth_polygons,
-                                 mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, bootstrap_repetition_num, repeat_bool):
+                                 mtl_prediction_images_boxes, faster_rcnn_prediction_images_boxes, bootstrap_repetition_num, repeat_index):
 
     if os.path.isdir(save_base_path) is False:
         os.makedirs(save_base_path)
@@ -270,9 +269,13 @@ def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, gro
 
     testset_sample_size = len(ground_truth_mask_names)
     polygon_counts = np.zeros(shape=(bootstrap_repetition_num, 2))
-    if repeat_bool:
-        bootstrap_state_constant = 123456
-        save_suffix = 'repeat'
+    if repeat_index > 0:
+        bootstrap_state_constant = repeat_index
+        save_suffix = f'repeat{repeat_index}'
+    else:
+        bootstrap_state_constant = 0
+        save_suffix = ''
+
     for bootstrap_repetition_index in tqdm(range(bootstrap_repetition_num)):
         # ------- bootstrap subjects ------
         if images_by_subject != None:
@@ -333,8 +336,19 @@ def bootstrap_two_model_polygons(save_base_path, img_root_path, image_names, gro
                 else:  # MultiPolygon
                     overlapped_prediction_polygon = list(overlapped_prediction_polygon.geoms)
 
-                ground_truth_polygons_total = ground_truth_polygons_total + len(one_ground_truth_polygons)
-                prediction_polygons_total = prediction_polygons_total + len(overlapped_prediction_polygon)
+                # weight the area of the GT polygon
+                # gt_polygon_area_median = 10220 # found the value by min(mask_area_list) in run_eval.py
+                # total_gt_polygon_area = 0
+                # for a_gt_polygon in one_ground_truth_polygons:
+                #     total_gt_polygon_area = total_gt_polygon_area + a_gt_polygon.area
+                # if len(one_ground_truth_polygons) == 0:
+                #     average_gt_polygon_area = 0
+                # else:
+                #     average_gt_polygon_area = total_gt_polygon_area / len(one_ground_truth_polygons)
+
+                # count the number of detected follicular clusters in an image
+                ground_truth_polygons_total = ground_truth_polygons_total + len(one_ground_truth_polygons) # weight the area of the GT polygon (average_gt_polygon_area/gt_polygon_area_median)
+                prediction_polygons_total = prediction_polygons_total + len(overlapped_prediction_polygon) 
                 polygon_counts[bootstrap_repetition_index, :] = ground_truth_polygons_total, prediction_polygons_total
 
     polygon_counts_df = pd.DataFrame(polygon_counts)
@@ -392,6 +406,6 @@ def stats_at_threshold(box_counts_df, ground_truth_min_follicular, predicted_min
 
         print('precision', precision, end='  ')
         print('recall', recall, end='  ')
-        print('F1', F1)
+        print('F1', round(F1,3))
 
     return precision, recall, F1
