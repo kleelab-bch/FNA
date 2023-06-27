@@ -659,31 +659,33 @@ class Visualizer:
         plt.close()
 
     
-    def manuscript_fig5_draw_comparison_bar_graph_with_errors(self, save_path, eval_type):
+    def manuscript_fig5_draw_comparison_bar_graph_with_errors(self, save_path, eval_type, metric_type):
         # Figure 3 (c) in the manuscript
         # Precision, Recall and F1 score bar graphs from three different models: MTL, Faster R-CNN, and MTL + Faster R-CNN
 
         sns.set_theme(style="whitegrid", palette="muted")
         
         # ------------------------ f1 scores ------------------------
-        # list_of_mean_list = [[0.1743, 0.3484, 0.6929, 0.8659, 0.7896, 0.9154],
-        #         ['th6', 'th10', 'th6', 'th10', 'th6', 'th10'],
-        #         ['RCNN', 'RCNN', 'MTL', 'MTL', 'Both', 'Both']]
+        if metric_type=='f1':
+            list_of_mean_list = [[0.1743, 0.3484, 0.6929, 0.8659, 0.7896, 0.9154],
+                    ['th6', 'th10', 'th6', 'th10', 'th6', 'th10'],
+                    ['RCNN', 'RCNN', 'MTL', 'MTL', 'Both', 'Both']]
 
-        # # dicts with errors
-        # mtl_error = {0.6929:0.140966224,0.8659:0.081491162}
-        # faster_error = {0.1743:0.324696635, 0.3484:0.361580723}
-        # mtl_faster_error = {0.7896:0.07916619, 0.9154:0.03404339}
+            # dicts with errors
+            mtl_error = {0.6929:0.140966224,0.8659:0.081491162}
+            faster_error = {0.1743:0.324696635, 0.3484:0.361580723}
+            mtl_faster_error = {0.7896:0.07916619, 0.9154:0.03404339}
 
         # ------------------------ AUC scores ------------------------
-        list_of_mean_list = [[0.6494, 0.8963, 0.8221, 0.941, 0.8649, 0.9613],
-                ['th6', 'th10', 'th6', 'th10', 'th6', 'th10'],
-                ['RCNN', 'RCNN', 'MTL', 'MTL', 'Both', 'Both']]
+        if metric_type=='auc':
+            list_of_mean_list = [[0.6494, 0.8963, 0.8221, 0.941, 0.8649, 0.9613],
+                    ['th6', 'th10', 'th6', 'th10', 'th6', 'th10'],
+                    ['RCNN', 'RCNN', 'MTL', 'MTL', 'Both', 'Both']]
 
-        # dicts with errors
-        faster_error = {0.6494:0.184641867, 0.8963:0.066892237}
-        mtl_error = {0.8221:0.081846255,0.941:0.03881151}
-        mtl_faster_error = {0.8649:0.080140353, 0.9613:0.027693045}
+            # dicts with errors
+            faster_error = {0.6494:0.184641867, 0.8963:0.066892237}
+            mtl_error = {0.8221:0.081846255,0.941:0.03881151}
+            mtl_faster_error = {0.8649:0.080140353, 0.9613:0.027693045}
         # -----------------------------------------------------------
 
         # combine them; providing all the keys are unique
@@ -709,7 +711,7 @@ class Visualizer:
         save_base_path = f"{save_path}manuscript/"
         if os.path.isdir(save_base_path) is False:
             os.makedirs(save_base_path)
-        plt.savefig(f"{save_base_path}{eval_type}_fig5_bar_graph_comparison.svg")
+        plt.savefig(f"{save_base_path}{eval_type}_{metric_type}_fig5_bar_graph_comparison.svg")
 
     
     def manuscript_draw_comparison_bar_graph_with_errors(self, save_path, eval_type):

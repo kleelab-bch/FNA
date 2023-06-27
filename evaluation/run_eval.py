@@ -498,7 +498,9 @@ def print_eval_final(save_path, eval_type):
         Visualizer().manuscript_draw_MTL_comparison_bar_graph_with_errors(save_path, eval_type, summary_eval_dict)
     elif eval_type == 'final':
         # Visualizer().manuscript_draw_comparison_bar_graph_with_errors(save_path, eval_type, summary_eval_dict)
-        # F1
+
+        # metric_type = 'f1'
+        # print('Figure 5f')
         # mtl_th6 = [0.564, 0.728, 0.825, 0.528, 0.885, 0.754, 0.566]
         # mtl_th10 = [0.752, 0.867, 0.982, 0.87, 0.922, 0.898, 0.77]
         # rcnn_th6 = [0, 0, 0.297, 0.041, 0.001, 0.012, 0.869]
@@ -506,7 +508,8 @@ def print_eval_final(save_path, eval_type):
         # fnanet_th6 = [0.679, 0.745, 0.797, 0.734, 0.793, 0.878, 0.901]
         # fnanet_th10 = [0.941, 0.882, 0.976, 0.878, 0.909, 0.915, 0.907]
 
-        # auc
+        metric_type = 'auc'
+        print('Figure 5e')
         mtl_th6 = [0.807, 0.75, 0.917, 0.767, 0.951, 0.819, 0.744]
         mtl_th10 = [0.933, 0.923, 0.977, 0.941, 0.998, 0.938,0.877]
         rcnn_th6 = [0.51, 0.362, 0.701, 0.622, 0.713, 0.682,0.956]
@@ -527,7 +530,7 @@ def print_eval_final(save_path, eval_type):
         perform_wilcoxon_signed_rank_sum_test(mtl_th10, fnanet_th10, 'th10 MTL vs FNA-Net')
 
 
-        Visualizer().manuscript_fig5_draw_comparison_bar_graph_with_errors(save_path, eval_type)
+        Visualizer().manuscript_fig5_draw_comparison_bar_graph_with_errors(save_path, eval_type, metric_type)
 
 
 def perform_wilcoxon_signed_rank_sum_test(first_list, second_list, metric_name):
